@@ -28,14 +28,15 @@ jobs:
         with:
           otp-version: '27'
 
-      - name: Install rebar3
+      - name: Install and verify rebar3
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3" -OutFile "$env:TEMP\rebar3"
           escript "$env:TEMP\rebar3" local install
-          $rebar3Path = "$env:USERPROFILE\.cache\rebar3\bin"
-          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Path
-          Write-Host "rebar3 installed to $rebar3Path"
+          $rebar3Bin = Join-Path $env:USERPROFILE ".cache\rebar3\bin"
+          Write-Host "rebar3 bin dir: $rebar3Bin"
+          Get-ChildItem $rebar3Bin
+          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Bin
 
       - name: Build gateway release
         working-directory: fluxer_gateway
@@ -43,9 +44,13 @@ jobs:
         run: |
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          $rebar3 = Join-Path $env:USERPROFILE ".cache\\rebar3\\bin\\rebar3.cmd"
-          if (-not (Test-Path $rebar3)) { $rebar3 = "rebar3" }
-          & $rebar3 as prod release
+          $rebar3Bin = Join-Path $env:USERPROFILE ".cache\rebar3\bin"
+          $rebar3Cmd = Join-Path $rebar3Bin "rebar3"
+          if (-not (Test-Path $rebar3Cmd)) {
+            $rebar3Cmd = Join-Path $rebar3Bin "rebar3.cmd"
+          }
+          Write-Host "Using rebar3 at: $rebar3Cmd"
+          & $rebar3Cmd as prod release
 
       - name: Upload gateway artifact
         uses: actions/upload-artifact@v4
@@ -67,9 +72,9 @@ jobs:
       - name: Download binaries
         shell: pwsh
         run: |
-          $BinDir = "windows\bin"
+          $BinDir = Join-Path (Get-Location) "windows\bin"
           New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-          New-Item -ItemType Directory -Force -Path "$BinDir\node" | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $BinDir "node") | Out-Null
 
           Write-Host "Downloading Caddy..."
           $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
@@ -81,33 +86,35 @@ jobs:
           $natsRel = (Invoke-RestMethod "https://api.github.com/repos/nats-io/nats-server/releases/latest").tag_name
           Invoke-WebRequest -Uri "https://github.com/nats-io/nats-server/releases/download/$natsRel/nats-server-$natsRel-windows-amd64.zip" -OutFile "$env:TEMP\nats.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\nats.zip" -DestinationPath "$env:TEMP\nats" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\nats-server.exe"
+          Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "nats-server.exe")
 
           Write-Host "Downloading Meilisearch..."
           $meiliRel = (Invoke-RestMethod "https://api.github.com/repos/meilisearch/meilisearch/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile "$BinDir\meilisearch.exe" -UseBasicParsing
+          Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile (Join-Path $BinDir "meilisearch.exe") -UseBasicParsing
 
           Write-Host "Downloading LiveKit..."
           $livekitRel = (Invoke-RestMethod "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
           $livekitVer = $livekitRel.TrimStart('v')
           Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_${livekitVer}_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\livekit-server.exe"
+          Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "livekit-server.exe")
 
           Write-Host "Downloading Redis for Windows..."
           $redisRel = (Invoke-RestMethod "https://api.github.com/repos/tporadowski/redis/releases/latest").tag_name
           $redisVer = $redisRel.TrimStart('v')
           Invoke-WebRequest -Uri "https://github.com/tporadowski/redis/releases/download/$redisRel/Redis-x64-${redisVer}.zip" -OutFile "$env:TEMP\redis.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\redis.zip" -DestinationPath "$env:TEMP\redis" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\redis" -Filter "redis-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
+          Copy-Item (Get-ChildItem "$env:TEMP\redis" -Filter "redis-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "valkey-server.exe")
 
           Write-Host "Downloading Node.js..."
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" -OutFile "$env:TEMP\node.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\node.zip" -DestinationPath "$env:TEMP\nodeextract" -Force
-          Copy-Item -Recurse -Force (Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1).FullName "$BinDir\node"
+          $nodeDir = Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1
+          Copy-Item -Recurse -Force $nodeDir.FullName (Join-Path $BinDir "node")
 
           Write-Host "Installing pnpm..."
-          & "$BinDir\node\npm.cmd" install -g pnpm
+          $npmCmd = Join-Path $BinDir "node\npm.cmd"
+          & $npmCmd install -g pnpm
 
           Write-Host "All binaries downloaded."
 
@@ -138,7 +145,7 @@ jobs:
 
       - name: Install deps and build
         run: |
-          pnpm config set trust-all-packages true
+          pnpm config set trust-all-packages true --location global
           cd fluxer_app
           pnpm install --no-frozen-lockfile
           pnpm build

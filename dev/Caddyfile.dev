@@ -15,9 +15,9 @@
 	}
 	@gateway path /gateway /gateway/*
 	handle @gateway {
-		reverse_proxy https://web.fluxer.app {
-			header_up Host web.fluxer.app
-			header_up Origin https://web.fluxer.app
+		reverse_proxy https://gateway.fluxer.app {
+			header_up Host gateway.fluxer.app
+			header_up Origin https://gateway.fluxer.app
 			header_up X-Forwarded-Proto https
 			header_up Connection {http.request.header.Connection}
 			header_up Upgrade {http.request.header.Upgrade}
@@ -31,7 +31,7 @@
 	handle /.well-known/fluxer {
 		reverse_proxy 127.0.0.1:49319
 	}
-     @server path /admin /admin/* /api /api/* /s3 /s3/* /queue /queue/* /media /media/* /_health /_ready /_live
+     	@server path /admin /admin/* /api /api/* /s3 /s3/* /queue /queue/* /media /media/* /_health /_ready /_live
     handle @server {
 	    reverse_proxy https://web.fluxer.app {
 		    header_up Host web.fluxer.app
@@ -55,11 +55,10 @@
 		reverse_proxy 127.0.0.1:49667
 	}
     handle {
-		    reverse_proxy 127.0.0.1:49427 {
-			    header_up Connection {http.request.header.Connection}
-			    header_up Upgrade {http.request.header.Upgrade}
-		    }
-	    }
+		root * /home/supremegooper/fluxer/fluxer_app/dist
+		try_files {path} /index.html
+		file_server
+	}
 	log {
 		output stdout
 		format console

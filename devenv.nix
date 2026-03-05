@@ -5,6 +5,7 @@
 	env = {
 		FLUXER_CONFIG = "${config.git.root}/config/config.json";
 		FLUXER_DATABASE = "sqlite";
+		FLUXER_DIST_DIR = "${config.git.root}/fluxer_app/dist";
 		PC_DISABLE_TUI = "1";
 	};
 
@@ -38,10 +39,10 @@
 						};
 				};
 					fluxer_app = {
-						command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh fluxer_app env FORCE_COLOR=1 FLUXER_APP_DEV_PORT=49427 ${config.git.root}/scripts/dev_fluxer_app.sh";
+						command = lib.mkForce "echo 'fluxer_app disabled - using static build'";
 						log_location = "${config.git.root}/dev/logs/fluxer_app.log";
 							availability = {
-								restart = lib.mkForce "always";
+								restart = lib.mkForce "exit_on_failure";
 							};
 					};
 				fluxer_gateway = {

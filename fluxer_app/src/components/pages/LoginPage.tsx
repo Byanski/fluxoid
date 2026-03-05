@@ -18,6 +18,7 @@
  */
 
 import * as AuthenticationActionCreators from '@app/actions/AuthenticationActionCreators';
+import * as React from 'react';
 import {AuthLoginLayout} from '@app/components/auth/AuthLoginLayout';
 import {AuthRouterLink} from '@app/components/auth/AuthRouterLink';
 import {useDesktopHandoffFlow} from '@app/components/auth/auth_login_core/useDesktopHandoffFlow';
@@ -45,6 +46,7 @@ const LoginPage = observer(function LoginPage() {
 	const redirectPath = isDesktopHandoff ? undefined : rawRedirect || '/';
 
 	return (
+		<>
 		<AuthLoginLayout
 			redirectPath={redirectPath}
 			desktopHandoff={isDesktopHandoff}
@@ -56,6 +58,69 @@ const LoginPage = observer(function LoginPage() {
 				</AuthRouterLink>
 			}
 		/>
+		<TokenLoginSection />
+		</>
+	);
+});
+
+
+const TokenLoginSection = observer(function TokenLoginSection() {
+	const [showToken, setShowToken] = React.useState(false);
+	const [token, setToken] = React.useState('');
+	const [error, setError] = React.useState('');
+
+	const handleTokenLogin = React.useCallback(() => {
+		if (!token.trim()) {
+			setError('Please enter a token');
+			return;
+		}
+		AuthenticationActionCreators.startSession(token.trim(), {startGateway: true});
+		RouterUtils.replaceWith('/');
+	}, [token]);
+
+	if (!showToken) {
+		return (
+			<div style={{textAlign: 'center', marginTop: '16px'}}>
+				<button
+					type="button"
+					onClick={() => setShowToken(true)}
+					style={{background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '14px'}}
+				>
+					Login with token instead
+				</button>
+			</div>
+		);
+	}
+
+	return (
+		<div style={{marginTop: '16px', padding: '16px', background: 'var(--background-secondary)', borderRadius: '8px'}}>
+			<p style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px'}}>
+				Paste your Fluxer token below. To get your token, open the Fluxer web app in a browser,
+				open DevTools (F12), go to Console, and run: <code style={{background: 'var(--background-tertiary)', padding: '2px 4px', borderRadius: '4px'}}>localStorage.getItem('token')</code>
+			</p>
+			<input
+				type="password"
+				placeholder="flx_..."
+				value={token}
+				onChange={e => setToken(e.target.value)}
+				style={{width: '100%', padding: '8px', marginBottom: '8px', background: 'var(--background-tertiary)', border: '1px solid var(--background-modifier-accent)', borderRadius: '4px', color: 'var(--text-normal)', boxSizing: 'border-box'}}
+			/>
+			{error && <p style={{color: 'var(--text-danger)', fontSize: '13px', marginBottom: '8px'}}>{error}</p>}
+			<button
+				type="button"
+				onClick={handleTokenLogin}
+				style={{width: '100%', padding: '8px', background: 'var(--brand-experiment)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold'}}
+			>
+				Login
+			</button>
+			<button
+				type="button"
+				onClick={() => setShowToken(false)}
+				style={{width: '100%', padding: '8px', marginTop: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px'}}
+			>
+				Back to normal login
+			</button>
+		</div>
 	);
 });
 

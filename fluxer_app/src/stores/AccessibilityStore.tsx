@@ -96,6 +96,7 @@ export interface AccessibilitySettings {
 	embedMediaDimensionSize: MediaDimensionSize;
 	voiceChannelJoinRequiresDoubleClick: boolean;
 	customThemeCss: string | null;
+	customJs: string | null;
 	showFavorites: boolean;
 	zoomLevel: number;
 	dmMessagePreviewMode: DMMessagePreviewMode;
@@ -156,6 +157,7 @@ class AccessibilityStore {
 	voiceChannelJoinRequiresDoubleClick = false;
 	systemReducedMotion = false;
 	customThemeCss: string | null = null;
+	customJs: string | null = null;
 	showFavorites = true;
 	zoomLevel = 1.0;
 	dmMessagePreviewMode: DMMessagePreviewMode = getDefaultDmMessagePreviewMode();
@@ -224,6 +226,7 @@ class AccessibilityStore {
 			'embedMediaDimensionSize',
 			'voiceChannelJoinRequiresDoubleClick',
 			'customThemeCss',
+			'customJs',
 			'showFavorites',
 			'zoomLevel',
 			'dmMessagePreviewMode',
@@ -347,6 +350,7 @@ class AccessibilityStore {
 		if (validated.voiceChannelJoinRequiresDoubleClick !== undefined)
 			this.voiceChannelJoinRequiresDoubleClick = validated.voiceChannelJoinRequiresDoubleClick;
 		if (validated.customThemeCss !== undefined) this.customThemeCss = validated.customThemeCss;
+		if (validated.customJs !== undefined) this.customJs = validated.customJs;
 		if (validated.showFavorites !== undefined) this.showFavorites = validated.showFavorites;
 		if (validated.zoomLevel !== undefined) {
 			this.zoomLevel = validated.zoomLevel;
@@ -420,6 +424,7 @@ class AccessibilityStore {
 			voiceChannelJoinRequiresDoubleClick:
 				data.voiceChannelJoinRequiresDoubleClick ?? this.voiceChannelJoinRequiresDoubleClick,
 			customThemeCss: data.customThemeCss !== undefined ? data.customThemeCss : this.customThemeCss,
+			customJs: data.customJs !== undefined ? data.customJs : this.customJs,
 			showFavorites: data.showFavorites ?? this.showFavorites,
 			zoomLevel: Math.max(0.5, Math.min(2.0, data.zoomLevel ?? this.zoomLevel)),
 			dmMessagePreviewMode: data.dmMessagePreviewMode ?? this.dmMessagePreviewMode,

@@ -48,7 +48,8 @@
     "overrides": {
       "@lingui/swc-plugin": "catalog:",
       "@rspack/cli": "catalog:",
-      "@rspack/core": "catalog:"
+      "@rspack/core": "catalog:",
+      "semver": "7.6.3"
     },
     "patchedDependencies": {}
   }

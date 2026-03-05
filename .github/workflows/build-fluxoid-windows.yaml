@@ -15,7 +15,7 @@ permissions:
 jobs:
   build-gateway-windows:
     name: Build Gateway (Windows)
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -45,7 +45,7 @@ jobs:
 
   download-bins-windows:
     name: Download Windows Binaries
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -61,7 +61,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$BinDir\node" | Out-Null
 
           Write-Host "Downloading Caddy..."
-          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/latest/download/caddy_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
+          $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
+          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/download/$caddyRel/caddy_$($caddyRel.TrimStart('v'))_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\caddy.zip" -DestinationPath $BinDir -Force
 
           Write-Host "Downloading NATS..."
@@ -124,7 +125,7 @@ jobs:
       - name: Install deps and build
         run: |
           cd fluxer_app
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm build
 
       - name: Upload frontend artifact
@@ -137,7 +138,7 @@ jobs:
   package-windows:
     name: Package Windows Installer
     needs: [build-gateway-windows, download-bins-windows, build-frontend]
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - name: Checkout

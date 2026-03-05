@@ -235,6 +235,25 @@ const SECTION_REGISTRY: Array<SectionDefinition> = [
 		keywords: [msg`favorites`, msg`favorite channels`, msg`starred`, msg`saved`, msg`quick access`],
 		isAdvanced: true,
 	},
+	{
+		id: 'custom-js',
+		tabType: 'appearance',
+		label: msg`Custom JavaScript`,
+		description: msg`Add custom JavaScript that runs on startup — great for animations, sounds, or any other personal tweaks.`,
+		keywords: [
+			msg`custom js`,
+			msg`javascript`,
+			msg`script`,
+			msg`custom script`,
+			msg`animations`,
+			msg`inject`,
+			msg`code`,
+			msg`client`,
+			msg`personalise`,
+			msg`tweak`,
+		],
+		isAdvanced: true,
+	},
 
 	{
 		id: 'visual',

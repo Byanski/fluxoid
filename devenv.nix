@@ -27,21 +27,21 @@
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh caddy caddy run --config ${config.git.root}/dev/Caddyfile.dev --adapter caddyfile";
 					log_location = "${config.git.root}/dev/logs/caddy.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				css_watch = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh css_watch ${config.git.root}/scripts/dev_css_watch.sh";
 					log_location = "${config.git.root}/dev/logs/css_watch.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 					fluxer_app = {
 						command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh fluxer_app env FORCE_COLOR=1 FLUXER_APP_DEV_PORT=49427 ${config.git.root}/scripts/dev_fluxer_app.sh";
 						log_location = "${config.git.root}/dev/logs/fluxer_app.log";
 							availability = {
-								restart = "always";
+								restart = lib.mkForce "always";
 							};
 					};
 				fluxer_gateway = {
@@ -51,63 +51,63 @@
 						flush_each_line = true;
 					};
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				fluxer_server = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh fluxer_server pnpm --filter fluxer_server dev";
 					log_location = "${config.git.root}/dev/logs/fluxer_server.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				livekit = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh livekit livekit-server --config ${config.git.root}/dev/livekit.yaml";
 					log_location = "${config.git.root}/dev/logs/livekit.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				mailpit = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh mailpit mailpit --listen 127.0.0.1:49667 --smtp 127.0.0.1:49621 --webroot /mailpit/";
 					log_location = "${config.git.root}/dev/logs/mailpit.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 			meilisearch = {
 				command = lib.mkForce "MEILI_NO_ANALYTICS=true exec ${config.git.root}/scripts/dev_process_entry.sh meilisearch meilisearch --env development --master-key \"$(cat ${config.git.root}/dev/meilisearch_master_key 2>/dev/null || true)\" --db-path ${config.git.root}/dev/data/meilisearch --http-addr 127.0.0.1:7700";
 					log_location = "${config.git.root}/dev/logs/meilisearch.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				valkey = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh valkey valkey-server --bind 127.0.0.1 --port 6379";
 					log_location = "${config.git.root}/dev/logs/valkey.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				marketing_dev = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh marketing_dev env FORCE_COLOR=1 pnpm --filter fluxer_marketing dev";
 					log_location = "${config.git.root}/dev/logs/marketing_dev.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				nats_core = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh nats_core nats-server -p 4222 -a 127.0.0.1";
 					log_location = "${config.git.root}/dev/logs/nats_core.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 				nats_jetstream = {
 					command = lib.mkForce "exec ${config.git.root}/scripts/dev_process_entry.sh nats_jetstream nats-server -p 4223 -js -sd ${config.git.root}/dev/data/nats_jetstream -a 127.0.0.1";
 					log_location = "${config.git.root}/dev/logs/nats_jetstream.log";
 						availability = {
-							restart = "always";
+							restart = lib.mkForce "always";
 						};
 				};
 			};
@@ -128,9 +128,7 @@
 		livekit
 		mailpit
 		go_1_24
-		(rust-bin.stable."1.93.0".default.override {
-			targets = [ "wasm32-unknown-unknown" ];
-		})
+		pkgs.rustup
 		jq
 		gettext
 		lsof

@@ -31,6 +31,7 @@ import {
 	useAppZoomLevelDescription,
 } from '@app/components/modals/tabs/appearance_tab/ScalingTab';
 import {ThemeTabContent} from '@app/components/modals/tabs/appearance_tab/ThemeTab';
+import {CustomJsTabContent} from '@app/components/modals/tabs/appearance_tab/CustomJsTab';
 import {shouldShowAppZoomLevel} from '@app/components/modals/utils/AppZoomLevelUtils';
 import MobileLayoutStore from '@app/stores/MobileLayoutStore';
 import {useLingui} from '@lingui/react/macro';
@@ -117,6 +118,14 @@ export const AppearanceTab: React.FC = observer(() => {
 					description={t`Control the visibility of favorites throughout the app.`}
 				>
 					<FavoritesTabContent />
+				</SettingsSection>
+
+				<SettingsSection
+					id="custom-js"
+					title={t`Custom JavaScript`}
+					description={t`Add custom JavaScript that runs on startup — great for animations, sounds, or any other personal tweaks.`}
+				>
+					<CustomJsTabContent />
 				</SettingsSection>
 			</SettingsTabContent>
 		</SettingsTabContainer>

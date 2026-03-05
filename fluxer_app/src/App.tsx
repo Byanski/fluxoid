@@ -83,6 +83,7 @@ export const AppWrapper = observer(({children}: AppWrapperProps) => {
 	const {platform, isNative, isMacOS} = useNativePlatform();
 	useElectronScreenSharePicker();
 	const customThemeCss = AccessibilityStore.customThemeCss;
+	const customJs = AccessibilityStore.customJs;
 	const effectiveTheme = ThemeStore.effectiveTheme;
 	const [layoutVariant, setLayoutVariant] = useState<LayoutVariant>('app');
 	const layoutVariantContextValue = useMemo(
@@ -383,6 +384,30 @@ export const AppWrapper = observer(({children}: AppWrapperProps) => {
 			document.head.appendChild(styleElement);
 		}
 	}, [customThemeCss]);
+
+	useEffect(() => {
+		const scriptElementId = 'fluxer-custom-js';
+		const existing = document.getElementById(scriptElementId) as HTMLScriptElement | null;
+
+		const js = customJs?.trim() ?? '';
+
+		if (!js) {
+			if (existing?.parentNode) {
+				existing.parentNode.removeChild(existing);
+			}
+			return;
+		}
+
+		// Always remove old script and re-insert to re-execute on changes
+		if (existing?.parentNode) {
+			existing.parentNode.removeChild(existing);
+		}
+
+		const scriptElement = document.createElement('script');
+		scriptElement.id = scriptElementId;
+		scriptElement.textContent = js;
+		document.head.appendChild(scriptElement);
+	}, [customJs]);
 
 	return (
 		<LayoutVariantProvider value={layoutVariantContextValue}>

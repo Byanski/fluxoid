@@ -43,7 +43,9 @@ jobs:
         run: |
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          rebar3 as prod release
+          $rebar3 = Join-Path $env:USERPROFILE ".cache\\rebar3\\bin\\rebar3.cmd"
+          if (-not (Test-Path $rebar3)) { $rebar3 = "rebar3" }
+          & $rebar3 as prod release
 
       - name: Upload gateway artifact
         uses: actions/upload-artifact@v4
@@ -135,9 +137,8 @@ jobs:
           node-version: 24
 
       - name: Install deps and build
-        env:
-          PNPM_ALLOW_TRUST_DOWNGRADE: "true"
         run: |
+          pnpm config set trust-all-packages true
           cd fluxer_app
           pnpm install --no-frozen-lockfile
           pnpm build

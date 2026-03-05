@@ -15,7 +15,7 @@ permissions:
 jobs:
   build-gateway-windows:
     name: Build Gateway (Windows)
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -28,11 +28,23 @@ jobs:
         with:
           otp-version: '27'
 
+      - name: Install rebar3
+        shell: pwsh
+        run: |
+          $rebar3Rel = (Invoke-RestMethod "https://api.github.com/repos/erlang/rebar3/releases/latest").tag_name
+          $rebar3Dir = "C:\rebar3"
+          New-Item -ItemType Directory -Force -Path $rebar3Dir | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/download/$rebar3Rel/rebar3" -OutFile "$rebar3Dir\rebar3" -UseBasicParsing
+          Set-Content -Path "$rebar3Dir\rebar3.cmd" -Value "@escript %~dp0rebar3 %*"
+          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Dir
+          Write-Host "rebar3 $rebar3Rel installed to $rebar3Dir"
+
       - name: Build gateway release
         working-directory: fluxer_gateway
         shell: pwsh
         run: |
-          (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
+          # Use pre-prepared Windows rebar config (no ezstd NIF, include_erts=true)
+          Copy-Item rebar.windows.config rebar.config -Force
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
           rebar3 as prod release
 
@@ -45,7 +57,7 @@ jobs:
 
   download-bins-windows:
     name: Download Windows Binaries
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -56,43 +68,48 @@ jobs:
       - name: Download binaries
         shell: pwsh
         run: |
-          $BinDir = "windows\bin"
+          $BinDir = Join-Path (Get-Location) "windows\bin"
           New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-          New-Item -ItemType Directory -Force -Path "$BinDir\node" | Out-Null
 
           Write-Host "Downloading Caddy..."
-          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/latest/download/caddy_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
+          $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
+          $caddyVer = $caddyRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/download/$caddyRel/caddy_${caddyVer}_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\caddy.zip" -DestinationPath $BinDir -Force
 
           Write-Host "Downloading NATS..."
           $natsRel = (Invoke-RestMethod "https://api.github.com/repos/nats-io/nats-server/releases/latest").tag_name
           Invoke-WebRequest -Uri "https://github.com/nats-io/nats-server/releases/download/$natsRel/nats-server-$natsRel-windows-amd64.zip" -OutFile "$env:TEMP\nats.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\nats.zip" -DestinationPath "$env:TEMP\nats" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\nats-server.exe"
+          Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "nats-server.exe")
 
           Write-Host "Downloading Meilisearch..."
           $meiliRel = (Invoke-RestMethod "https://api.github.com/repos/meilisearch/meilisearch/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile "$BinDir\meilisearch.exe" -UseBasicParsing
+          Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile (Join-Path $BinDir "meilisearch.exe") -UseBasicParsing
 
           Write-Host "Downloading LiveKit..."
           $livekitRel = (Invoke-RestMethod "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
+          $livekitVer = $livekitRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_${livekitVer}_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\livekit-server.exe"
+          Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "livekit-server.exe")
 
-          Write-Host "Downloading Valkey..."
-          $valkeyRel = (Invoke-RestMethod "https://api.github.com/repos/valkey-io/valkey/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/valkey-io/valkey/releases/download/$valkeyRel/valkey-$($valkeyRel.TrimStart('v'))-windows-x86_64.zip" -OutFile "$env:TEMP\valkey.zip" -UseBasicParsing
-          Expand-Archive "$env:TEMP\valkey.zip" -DestinationPath "$env:TEMP\valkey" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\valkey" -Filter "valkey-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
+          Write-Host "Downloading Redis for Windows..."
+          $redisRel = (Invoke-RestMethod "https://api.github.com/repos/tporadowski/redis/releases/latest").tag_name
+          $redisVer = $redisRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/tporadowski/redis/releases/download/$redisRel/Redis-x64-${redisVer}.zip" -OutFile "$env:TEMP\redis.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\redis.zip" -DestinationPath "$env:TEMP\redis" -Force
+          Copy-Item (Get-ChildItem "$env:TEMP\redis" -Filter "redis-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "valkey-server.exe")
 
           Write-Host "Downloading Node.js..."
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" -OutFile "$env:TEMP\node.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\node.zip" -DestinationPath "$env:TEMP\nodeextract" -Force
-          Copy-Item -Recurse -Force (Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1).FullName "$BinDir\node"
-
-          Write-Host "Installing pnpm..."
-          & "$BinDir\node\npm.cmd" install -g pnpm
+          $nodeDir = Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1
+          $nodeBinDir = Join-Path $BinDir "node"
+          Copy-Item -Recurse -Force $nodeDir.FullName $nodeBinDir
+          $npmExe = Get-ChildItem $nodeBinDir -Filter "npm.cmd" -Recurse | Select-Object -First 1
+          Write-Host "npm at: $($npmExe.FullName)"
+          & $npmExe.FullName install -g pnpm
 
           Write-Host "All binaries downloaded."
 
@@ -119,12 +136,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install deps and build
         run: |
           cd fluxer_app
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm build
 
       - name: Upload frontend artifact
@@ -137,7 +154,7 @@ jobs:
   package-windows:
     name: Package Windows Installer
     needs: [build-gateway-windows, download-bins-windows, build-frontend]
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -151,7 +168,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Download gateway artifact
         uses: actions/download-artifact@v4
@@ -177,7 +194,7 @@ jobs:
 
       - name: Install desktop deps
         working-directory: fluxer_desktop
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build Electron main process
         working-directory: fluxer_desktop

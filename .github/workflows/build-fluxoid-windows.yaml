@@ -28,15 +28,19 @@ jobs:
         with:
           otp-version: '27'
 
-      - name: Install and verify rebar3
+      - name: Install rebar3
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3" -OutFile "$env:TEMP\rebar3"
-          escript "$env:TEMP\rebar3" local install
-          $rebar3Bin = Join-Path $env:USERPROFILE ".cache\rebar3\bin"
-          Write-Host "rebar3 bin dir: $rebar3Bin"
-          Get-ChildItem $rebar3Bin
-          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Bin
+          # Download rebar3 Windows binary directly from hex.pm
+          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3.ps1" -OutFile "$env:TEMP\rebar3_install.ps1" -UseBasicParsing -ErrorAction SilentlyContinue
+          # Fallback: use mix escript or just download the escript and wrap it
+          $rebar3Dir = "C:\rebar3"
+          New-Item -ItemType Directory -Force -Path $rebar3Dir | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3" -OutFile "$rebar3Dir\rebar3" -UseBasicParsing
+          # Create a cmd wrapper
+          Set-Content -Path "$rebar3Dir\rebar3.cmd" -Value "@escript %~dp0rebar3 %*"
+          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Dir
+          Write-Host "rebar3 installed to $rebar3Dir"
 
       - name: Build gateway release
         working-directory: fluxer_gateway
@@ -44,13 +48,7 @@ jobs:
         run: |
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          $rebar3Bin = Join-Path $env:USERPROFILE ".cache\rebar3\bin"
-          $rebar3Cmd = Join-Path $rebar3Bin "rebar3"
-          if (-not (Test-Path $rebar3Cmd)) {
-            $rebar3Cmd = Join-Path $rebar3Bin "rebar3.cmd"
-          }
-          Write-Host "Using rebar3 at: $rebar3Cmd"
-          & $rebar3Cmd as prod release
+          rebar3.cmd as prod release
 
       - name: Upload gateway artifact
         uses: actions/upload-artifact@v4
@@ -74,7 +72,6 @@ jobs:
         run: |
           $BinDir = Join-Path (Get-Location) "windows\bin"
           New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-          New-Item -ItemType Directory -Force -Path (Join-Path $BinDir "node") | Out-Null
 
           Write-Host "Downloading Caddy..."
           $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
@@ -110,11 +107,16 @@ jobs:
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" -OutFile "$env:TEMP\node.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\node.zip" -DestinationPath "$env:TEMP\nodeextract" -Force
           $nodeDir = Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1
-          Copy-Item -Recurse -Force $nodeDir.FullName (Join-Path $BinDir "node")
+          $nodeBinDir = Join-Path $BinDir "node"
+          Copy-Item -Recurse -Force $nodeDir.FullName $nodeBinDir
+          Write-Host "Node dir contents:"
+          Get-ChildItem $nodeBinDir | Select-Object Name
 
-          Write-Host "Installing pnpm..."
-          $npmCmd = Join-Path $BinDir "node\npm.cmd"
-          & $npmCmd install -g pnpm
+          Write-Host "Installing pnpm via npm..."
+          $npmExe = Get-ChildItem $nodeBinDir -Filter "npm.cmd" -Recurse | Select-Object -First 1
+          if (-not $npmExe) { $npmExe = Get-ChildItem $nodeBinDir -Filter "npm" -Recurse | Select-Object -First 1 }
+          Write-Host "npm found at: $($npmExe.FullName)"
+          & $npmExe.FullName install -g pnpm
 
           Write-Host "All binaries downloaded."
 
@@ -137,6 +139,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -145,7 +149,6 @@ jobs:
 
       - name: Install deps and build
         run: |
-          pnpm config set trust-all-packages true --location global
           cd fluxer_app
           pnpm install --no-frozen-lockfile
           pnpm build
@@ -170,6 +173,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -48,7 +48,7 @@ jobs:
         run: |
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          rebar3.cmd as prod release
+          rebar3 as prod release
 
       - name: Upload gateway artifact
         uses: actions/upload-artifact@v4
@@ -139,8 +139,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -149,6 +147,8 @@ jobs:
 
       - name: Install deps and build
         run: |
+          # Override semver to avoid trust downgrade error
+          pnpm config set overrides.semver 7.6.3 --location global
           cd fluxer_app
           pnpm install --no-frozen-lockfile
           pnpm build
@@ -173,8 +173,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4

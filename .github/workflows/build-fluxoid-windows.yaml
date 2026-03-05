@@ -28,6 +28,14 @@ jobs:
         with:
           otp-version: '27'
 
+      - name: Install rebar3
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://s3.amazonaws.com/rebar3/rebar3" -OutFile "$env:TEMP\\rebar3"
+          # rebar3 is a self-extracting escript, run via escript
+          escript "$env:TEMP\\rebar3" local install
+          echo "$env:USERPROFILE\.cache\rebar3\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
       - name: Build gateway release
         working-directory: fluxer_gateway
         shell: pwsh
@@ -120,12 +128,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install deps and build
         run: |
           cd fluxer_app
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile --trust-all-packages
           pnpm build
 
       - name: Upload frontend artifact

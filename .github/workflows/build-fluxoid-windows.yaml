@@ -31,9 +31,11 @@ jobs:
       - name: Install rebar3
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://s3.amazonaws.com/rebar3/rebar3" -OutFile "$env:TEMP\rebar3"
+          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3" -OutFile "$env:TEMP\rebar3"
           escript "$env:TEMP\rebar3" local install
-          echo "$env:USERPROFILE\.cache\rebar3\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          $rebar3Path = "$env:USERPROFILE\.cache\rebar3\bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $rebar3Path
+          Write-Host "rebar3 installed to $rebar3Path"
 
       - name: Build gateway release
         working-directory: fluxer_gateway
@@ -90,12 +92,12 @@ jobs:
           Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
           Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\livekit-server.exe"
 
-          Write-Host "Downloading Valkey..."
-          $valkeyRel = (Invoke-RestMethod "https://api.github.com/repos/valkey-io/valkey/releases/latest").tag_name
-          $valkeyVer = $valkeyRel.TrimStart('v')
-          Invoke-WebRequest -Uri "https://github.com/valkey-io/valkey/releases/download/$valkeyRel/valkey-${valkeyVer}-windows-x86_64.zip" -OutFile "$env:TEMP\valkey.zip" -UseBasicParsing
-          Expand-Archive "$env:TEMP\valkey.zip" -DestinationPath "$env:TEMP\valkey" -Force
-          Copy-Item (Get-ChildItem "$env:TEMP\valkey" -Filter "valkey-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
+          Write-Host "Downloading Redis for Windows..."
+          $redisRel = (Invoke-RestMethod "https://api.github.com/repos/tporadowski/redis/releases/latest").tag_name
+          $redisVer = $redisRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/tporadowski/redis/releases/download/$redisRel/Redis-x64-${redisVer}.zip" -OutFile "$env:TEMP\redis.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\redis.zip" -DestinationPath "$env:TEMP\redis" -Force
+          Copy-Item (Get-ChildItem "$env:TEMP\redis" -Filter "redis-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
 
           Write-Host "Downloading Node.js..."
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" -OutFile "$env:TEMP\node.zip" -UseBasicParsing
@@ -132,10 +134,9 @@ jobs:
         with:
           node-version: 24
 
-      - name: Configure pnpm
-        run: pnpm config set network-concurrency 1
-
       - name: Install deps and build
+        env:
+          PNPM_ALLOW_TRUST_DOWNGRADE: "true"
         run: |
           cd fluxer_app
           pnpm install --no-frozen-lockfile

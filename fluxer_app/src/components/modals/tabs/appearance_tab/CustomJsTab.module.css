@@ -3,14 +3,12 @@
 	flex-direction: column;
 	gap: 0.75rem;
 }
-
 .description {
 	margin: 0;
 	font-size: 0.875rem;
 	color: var(--text-secondary);
 	line-height: 1.5;
 }
-
 .warning {
 	padding: 0.625rem 0.875rem;
 	border-radius: 4px;
@@ -20,9 +18,147 @@
 	color: var(--text-primary);
 	line-height: 1.5;
 }
-
 .buttonGroup {
 	display: flex;
 	gap: 0.5rem;
 	flex-wrap: wrap;
+}
+.importRow {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+.importInput {
+	flex: 1;
+	padding: 0.5rem 0.75rem;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-accent);
+	background: var(--background-tertiary);
+	color: var(--text-primary);
+	font-size: 0.875rem;
+}
+.importInput:focus {
+	outline: none;
+	border-color: var(--brand-experiment);
+}
+.section {
+	border: 1px solid var(--background-modifier-accent);
+	border-radius: 6px;
+	overflow: hidden;
+}
+.sectionToggle {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	width: 100%;
+	padding: 0.625rem 0.875rem;
+	background: var(--background-secondary);
+	border: none;
+	color: var(--text-primary);
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+	text-align: left;
+}
+.sectionToggle:hover {
+	background: var(--background-modifier-hover);
+}
+.sectionContent {
+	padding: 0.75rem 0.875rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.625rem;
+	background: var(--background-primary);
+}
+.sectionDesc {
+	margin: 0;
+	font-size: 0.8125rem;
+	color: var(--text-secondary);
+	line-height: 1.5;
+}
+.presetGrid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+.presetBtn {
+	padding: 0.375rem 0.75rem;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-accent);
+	background: var(--background-secondary);
+	color: var(--text-primary);
+	font-size: 0.8125rem;
+	cursor: pointer;
+	transition: background 0.1s;
+}
+.presetBtn:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--brand-experiment);
+}
+.soundSlot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0.625rem;
+	border-radius: 4px;
+	background: var(--background-secondary);
+	gap: 0.5rem;
+}
+.soundSlotInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+	min-width: 140px;
+}
+.soundSlotLabel {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+.soundSlotDesc {
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+}
+.soundUrlWrapper {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	flex: 1;
+}
+.soundUrlInput {
+	flex: 1;
+	padding: 0.375rem 0.625rem;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-accent);
+	background: var(--background-tertiary);
+	color: var(--text-primary);
+	font-size: 0.8125rem;
+}
+.soundUrlInput:focus {
+	outline: none;
+	border-color: var(--brand-experiment);
+}
+.soundLoaded {
+	font-size: 0.8125rem;
+	color: var(--accent-positive);
+	font-weight: 600;
+}
+.soundError {
+	font-size: 0.75rem;
+	color: var(--text-danger);
+	white-space: nowrap;
+}
+.iconBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.25rem;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	color: var(--text-danger);
+	cursor: pointer;
+}
+.iconBtn:hover {
+	background: color-mix(in srgb, var(--text-danger) 15%, transparent);
 }

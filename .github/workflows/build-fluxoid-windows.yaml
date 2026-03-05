@@ -31,9 +31,8 @@ jobs:
       - name: Install rebar3
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://s3.amazonaws.com/rebar3/rebar3" -OutFile "$env:TEMP\\rebar3"
-          # rebar3 is a self-extracting escript, run via escript
-          escript "$env:TEMP\\rebar3" local install
+          Invoke-WebRequest -Uri "https://s3.amazonaws.com/rebar3/rebar3" -OutFile "$env:TEMP\rebar3"
+          escript "$env:TEMP\rebar3" local install
           echo "$env:USERPROFILE\.cache\rebar3\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Build gateway release
@@ -70,7 +69,8 @@ jobs:
 
           Write-Host "Downloading Caddy..."
           $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/download/$caddyRel/caddy_$($caddyRel.TrimStart('v'))_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
+          $caddyVer = $caddyRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/download/$caddyRel/caddy_${caddyVer}_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\caddy.zip" -DestinationPath $BinDir -Force
 
           Write-Host "Downloading NATS..."
@@ -85,13 +85,15 @@ jobs:
 
           Write-Host "Downloading LiveKit..."
           $livekitRel = (Invoke-RestMethod "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
+          $livekitVer = $livekitRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_${livekitVer}_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
           Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\livekit-server.exe"
 
           Write-Host "Downloading Valkey..."
           $valkeyRel = (Invoke-RestMethod "https://api.github.com/repos/valkey-io/valkey/releases/latest").tag_name
-          Invoke-WebRequest -Uri "https://github.com/valkey-io/valkey/releases/download/$valkeyRel/valkey-$($valkeyRel.TrimStart('v'))-windows-x86_64.zip" -OutFile "$env:TEMP\valkey.zip" -UseBasicParsing
+          $valkeyVer = $valkeyRel.TrimStart('v')
+          Invoke-WebRequest -Uri "https://github.com/valkey-io/valkey/releases/download/$valkeyRel/valkey-${valkeyVer}-windows-x86_64.zip" -OutFile "$env:TEMP\valkey.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\valkey.zip" -DestinationPath "$env:TEMP\valkey" -Force
           Copy-Item (Get-ChildItem "$env:TEMP\valkey" -Filter "valkey-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
 
@@ -130,10 +132,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: Configure pnpm
+        run: pnpm config set network-concurrency 1
+
       - name: Install deps and build
         run: |
           cd fluxer_app
-          pnpm install --no-frozen-lockfile --trust-all-packages
+          pnpm install --no-frozen-lockfile
           pnpm build
 
       - name: Upload frontend artifact
@@ -160,7 +165,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Download gateway artifact
         uses: actions/download-artifact@v4
@@ -186,7 +191,7 @@ jobs:
 
       - name: Install desktop deps
         working-directory: fluxer_desktop
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build Electron main process
         working-directory: fluxer_desktop

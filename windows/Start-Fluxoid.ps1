@@ -103,8 +103,21 @@ while ($elapsed -lt $timeout) {
 Start-Sleep 3
 Write-Host "All services ready. Launching Fluxoid..."
 
-$AppExe = Get-ChildItem -Path (Join-Path $RepoRoot "fluxer_desktop\dist-electron") -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $AppExe) { Write-Error "Fluxoid exe not found in dist-electron."; exit 1 }
+# Find the exe - check installed location first, then dist-electron for dev
+$AppExe = $null
+
+# When installed via NSIS, the exe is in the install dir (passed as env var or sibling)
+$InstalledExe = Join-Path $ScriptDir "..\Fluxoid.exe"
+if (Test-Path $InstalledExe) {
+    $AppExe = Get-Item $InstalledExe
+}
+
+# Dev fallback - dist-electron
+if (-not $AppExe) {
+    $AppExe = Get-ChildItem -Path (Join-Path $RepoRoot "fluxer_desktop\dist-electron") -Filter "*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike "*Setup*" } | Select-Object -First 1
+}
+
+if (-not $AppExe) { Write-Error "Fluxoid exe not found. Make sure the app is installed or built."; exit 1 }
 
 Start-Process -FilePath $AppExe.FullName -Wait
 

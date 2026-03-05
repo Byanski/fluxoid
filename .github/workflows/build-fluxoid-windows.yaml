@@ -33,7 +33,8 @@ jobs:
         run: |
           # Patch rebar.config to include erts in prod release
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
-          .\scriptsebar3_wrapper.sh as prod release
+          .\scripts
+ebar3_wrapper.sh as prod release
         shell: pwsh
 
       - name: Upload gateway artifact

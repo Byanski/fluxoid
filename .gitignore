@@ -104,3 +104,5 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+fluxer_desktop/release/
+devenv.nix.backup

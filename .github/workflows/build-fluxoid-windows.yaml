@@ -43,7 +43,10 @@ jobs:
         working-directory: fluxer_gateway
         shell: pwsh
         run: |
+          # include erts for self-contained release
           (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
+          # remove ezstd dep - NIF won't compile on Windows, gateway handles absence gracefully
+          (Get-Content rebar.config) -replace '\{ezstd, ".*?"\},?\s*', '' | Set-Content rebar.config
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
           rebar3 as prod release
 

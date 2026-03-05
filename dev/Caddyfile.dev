@@ -3,6 +3,7 @@
 	admin off
 }
 :48763 {
+	encode zstd gzip
 	handle /_caddy_health {
 		respond "OK" 200
 	}

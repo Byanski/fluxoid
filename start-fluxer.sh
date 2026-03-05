@@ -25,6 +25,9 @@ until curl -sf http://localhost:48763/_caddy_health > /dev/null 2>&1; do
     sleep 1
 done
 
+# Extra settle time after services are ready
+sleep 2
+
 # Launch AppImage and wait for it to close
 "$SCRIPT_DIR/fluxer_desktop/dist-electron/fluxer_desktop-0.0.0.AppImage"
 

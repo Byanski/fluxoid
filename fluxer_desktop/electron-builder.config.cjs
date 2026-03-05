@@ -122,6 +122,8 @@ module.exports = {
 		deleteAppDataOnUninstall: false,
 		createDesktopShortcut: true,
 		createStartMenuShortcut: true,
+		include: 'build_resources/installer.nsh',
+		shortcutName: 'Fluxoid',
 	},
 
 	squirrelWindows: {

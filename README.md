@@ -1,170 +1,145 @@
-> [!NOTE]
-> Learn about the developer behind Fluxer, the goals of the project, the tech stack, and what's coming next.
->
-> [Read the launch blog post](https://blog.fluxer.app/how-i-built-fluxer-a-discord-like-chat-app/) · [View full roadmap](https://blog.fluxer.app/roadmap-2026/)
+# 🎨 Fluxoid
 
-<p align="center">
-  <img src="./media/logo-graphic.png" alt="Fluxer graphic logo" width="400">
-</p>
+> A custom fork of Fluxer built for themers and developers.
 
-<p align="center">
-  <a href="https://fluxer.app/donate">
-    <img src="https://img.shields.io/badge/Donate-fluxer.app%2Fdonate-brightgreen" alt="Donate" /></a>
-  <a href="https://docs.fluxer.app">
-    <img src="https://img.shields.io/badge/Docs-docs.fluxer.app-blue" alt="Documentation" /></a>
-  <a href="./LICENSE">
-    <img src="https://img.shields.io/badge/License-AGPLv3-purple" alt="AGPLv3 License" /></a>
-</p>
+Fluxoid is the `refactor` branch with extra flavor. It extends the base Fluxer client with deeper customization support — most notably a **Custom JS** input field that works alongside the existing Custom CSS field, giving themers full control over the look, feel, and behavior of their client.
 
-# Fluxer
+---
 
-Fluxer is a **free and open source instant messaging and VoIP platform** for friends, groups, and communities. Self-host it and every feature is unlocked.
+## ✨ What's Different
 
-## Quick links
+- **Custom JS Field** — Found at the bottom of **Settings → Look & Feel**, this new field lets you inject JavaScript directly into the client. It works in tandem with Custom CSS for a fully scriptable theming experience.
+- Built on top of the `refactor` branch — so you get all the upstream improvements plus the extras.
+- Headless dev server + backend run in the background automatically via the included launch script.
 
-- [Self-hosting guide](https://docs.fluxer.app/self-hosting)
-- [Documentation](https://docs.fluxer.app)
-- [Donate to support development](https://fluxer.app/donate)
-- [Security](https://fluxer.app/security)
+> ⚠️ **Note:** Running Fluxoid does add overhead compared to the standard client. You're running a dev build of the frontend (rspack dev server), a local backend (fluxer_server), and all supporting services (NATS, Valkey, Caddy, etc.) in the background.
 
-## Features
+---
 
-<img src="./media/app-showcase.png" alt="Fluxer showcase" align="right" width="45%" />
+## 🚀 Getting Started
 
-**Real-time messaging** – typing indicators, reactions, and threaded replies.
+### The Easy Way — One-Click Launch
 
-**Voice & video** – calls in communities and DMs with screen sharing, powered by LiveKit.
+A `start-fluxer.sh` script is included to handle everything for you. It will:
 
-**Rich media** – link previews, image and video attachments, and GIF search via KLIPY.
+1. Start the `devenv` environment and all background services
+2. Wait until everything is ready
+3. Launch the AppImage automatically
+4. Shut down all services cleanly when you close the app
 
-**Communities and channels** – text and voice channels organised into categories with granular permissions.
-
-**Custom expressions** – upload custom emojis and stickers for your community.
-
-**Self-hostable** – run your own instance with full control of your data and no vendor lock-in.
-
-> [!NOTE]
-> Native mobile apps and federation are top priorities. If you'd like to support this work, [donations](https://fluxer.app/donate) are greatly appreciated. You can also share feedback by emailing developers@fluxer.app.
-
-## Self-hosting
-
-> [!NOTE]
-> New to Fluxer? Follow the [self-hosting guide](https://docs.fluxer.app/self-hosting) for step-by-step setup instructions.
-
-TBD
-
-### Deployment helpers
-
-- [`livekitctl`](./fluxer_devops/livekitctl/README.md) – bootstrap a LiveKit SFU for voice and video
-
-## Development
-
-### Tech stack
-
-- [TypeScript](https://www.typescriptlang.org/) and [Node.js](https://nodejs.org/) for backend services
-- [Hono](https://hono.dev/) as the web framework for all HTTP services
-- [Erlang/OTP](https://www.erlang.org/) for the real-time WebSocket gateway (message routing and presence)
-- [React](https://react.dev/) and [Electron](https://www.electronjs.org/) for the desktop and web client
-- [Rust](https://www.rust-lang.org/) compiled to WebAssembly for performance-critical client code
-- [SQLite](https://www.sqlite.org/) for storage by default, with optional [Cassandra](https://cassandra.apache.org/) for distributed deployments
-- [Meilisearch](https://www.meilisearch.com/) for full-text search and indexing
-- [Valkey](https://valkey.io/) (Redis-compatible) for caching, rate limiting, and ephemeral coordination
-- [LiveKit](https://livekit.io/) for voice and video infrastructure
-
-### Devenv development environment
-
-Fluxer supports development through **devenv** only. It provides a reproducible Nix environment and a single, declarative process manager for the dev stack.
-
-1. Install Nix and devenv using the [devenv getting started guide](https://devenv.sh/getting-started/).
-2. Enter the environment:
+**To use it:**
 
 ```bash
-devenv shell
+bash /home/youruser/fluxer/start-fluxer.sh
 ```
 
-If you use direnv, the repo includes a `.envrc` that loads devenv automatically – run `direnv allow` once.
+You can also create a desktop launcher (e.g. in Linux Mint via right-click → Create Launcher) pointing to:
 
-### Getting started
+```
+bash /home/youruser/fluxer/start-fluxer.sh
+```
 
-Start all services and the development server with:
+That's it — one click and you're in.
 
+---
+
+### The Manual Way — CLI
+
+If you prefer to see what's happening under the hood or want more control:
+
+**Terminal 1 — Start the dev environment:**
 ```bash
+cd /home/youruser/fluxer
 devenv up
 ```
 
-Open the instance in a browser at your dev server URL (e.g. `http://localhost:48763/`).
+This starts all background services: NATS, Valkey, Caddy, Meilisearch, LiveKit, fluxer_server, fluxer_gateway, and fluxer_app (rspack dev server).
 
-Emails sent during development (verification codes, notifications, etc.) are captured by a local Mailpit instance. Access the inbox at your dev server URL + `/mailpit/` (e.g. `http://localhost:48763/mailpit/`).
+**Terminal 2 — Launch the AppImage:**
+```bash
+/home/youruser/fluxer/fluxer_desktop/dist-electron/fluxer_desktop-0.0.0.AppImage
+```
 
-### Voice on a remote VM
+Running manually lets you watch all service logs in real time in Terminal 1, which is useful for debugging.
 
-If you develop on a remote VM behind Cloudflare Tunnels (or a similar HTTP-only tunnel), voice and video won't work out of the box. Cloudflare Tunnels only proxy HTTP/WebSocket traffic, so WebRTC media transport needs a direct path to the server. Open these ports on the VM's firewall:
+---
 
-| Port        | Protocol | Purpose          |
-| ----------- | -------- | ---------------- |
-| 3478        | UDP      | TURN/STUN        |
-| 7881        | TCP      | ICE-TCP fallback |
-| 50000-50100 | UDP      | RTP/RTCP media   |
+## 🔧 Troubleshooting
 
-The bootstrap script configures LiveKit automatically based on `domain.base_domain` in your `config.json`. When set to a non-localhost domain, it enables external IP discovery so clients can connect directly for media while signaling continues through the tunnel.
+### App won't open / blank screen
 
-### Devcontainer (experimental)
+Check that your settings file has the correct local URL:
 
-There is experimental support for developing in a **VS Code Dev Container** / GitHub Codespace without Nix. The `.devcontainer/` directory provides a Docker Compose setup with all required tooling and backing services.
+```
+~/.config/fluxer/settings.json
+```
+
+It should contain:
+```json
+{ "app_url": "http://localhost:48763" }
+```
+
+---
+
+### Services not starting
+
+Check the bootstrap logs:
+
+```
+~/fluxer/dev/logs/bootstrap.log
+~/fluxer/dev/logs/bootstrap.err.log
+```
+
+---
+
+### Individual service crashes
+
+Each service has its own log:
+
+```
+~/fluxer/dev/logs/fluxer_app.log
+~/fluxer/dev/logs/fluxer_server.log
+~/fluxer/dev/logs/fluxer_gateway.log
+```
+
+---
+
+### Port conflicts on startup
+
+If a previous session didn't shut down cleanly, old processes may still be holding ports. Check with:
 
 ```bash
-# Inside the dev container, start all processes:
-process-compose -f .devcontainer/process-compose.yml up
+fuser 49427/tcp 49319/tcp 49107/tcp
 ```
 
-Open the app at `http://localhost:48763` and the dev email inbox at `http://localhost:48763/mailpit/`. Predefined VS Code debugging targets are available in `.vscode/launch.json`.
+The `start-fluxer.sh` script handles this automatically on launch. If running manually, kill the offending processes before starting devenv.
 
-> [!WARNING]
-> Bluesky OAuth is disabled in the devcontainer because it requires HTTPS. All other features work normally.
+---
 
-### Documentation
+### devenv won't start at all
 
-To develop the documentation site with live preview:
+Delete the bootstrap stamp file and try again:
 
 ```bash
-pnpm dev:docs
+rm -f "${XDG_RUNTIME_DIR:-/tmp}/fluxer_dev_bootstrap.done"
 ```
 
-## Contributing
+Then re-run `devenv up`.
 
-Fluxer is **free and open source software** licensed under **AGPLv3**. Contributions are welcome.
+---
 
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development processes and how to propose changes, and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) for community guidelines.
+## 📁 Key Files
 
-## Security
+| File | Purpose |
+|------|---------|
+| `start-fluxer.sh` | One-click launch script |
+| `dev/Caddyfile.dev` | Caddy reverse proxy config |
+| `dev/logs/` | All service logs |
+| `scripts/dev_bootstrap.sh` | Bootstrap script (secrets, config) |
+| `~/.config/fluxer/settings.json` | Desktop app config |
 
-Report vulnerabilities at [fluxer.app/security](https://fluxer.app/security). Do not use public issues for security reports.
+---
 
-<details>
-<summary><strong>License</strong></summary>
-<br>
+## 📝 License
 
-Copyright (c) 2026 Fluxer Contributors
-
-Licensed under the [GNU Affero General Public License v3](./LICENSE):
-
-```text
-Copyright (c) 2026 Fluxer Contributors
-
-This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-details.
-
-You should have received a copy of the GNU Affero General Public License along
-with this program. If not, see https://www.gnu.org/licenses/
-```
-
-See [`LICENSING.md`](./LICENSING.md) for details on commercial licensing and the CLA.
-
-</details>
+This project inherits the license of the upstream Fluxer project. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md) for details.

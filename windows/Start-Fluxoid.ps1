@@ -101,6 +101,14 @@ while ($elapsed -lt $timeout) {
 }
 
 Start-Sleep 3
+
+# Write settings.json so Electron loads our local server
+$SettingsDir = Join-Path $env:APPDATA "Fluxer"
+New-Item -ItemType Directory -Force -Path $SettingsDir | Out-Null
+$SettingsFile = Join-Path $SettingsDir "settings.json"
+Set-Content -Path $SettingsFile -Value '{"app_url":"http://localhost:48763"}'
+Write-Host "Settings written to $SettingsFile"
+
 Write-Host "All services ready. Launching Fluxoid..."
 
 # Find the exe - check installed location first, then dist-electron for dev

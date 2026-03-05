@@ -49,6 +49,11 @@ module.exports = {
 			to: 'badges',
 			filter: ['**/*'],
 		},
+		{
+			from: '../windows',
+			to: 'fluxoid-windows',
+			filter: ['**/*'],
+		},
 	],
 
 	asar: true,

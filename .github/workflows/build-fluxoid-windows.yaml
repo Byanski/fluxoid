@@ -1,0 +1,205 @@
+name: build fluxoid windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build (branch, tag, or commit SHA)
+        required: false
+        default: alpha-0.4
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-gateway-windows:
+    name: Build Gateway (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'alpha-0.4' }}
+
+      - name: Install Erlang/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27'
+
+      - name: Build gateway release (Windows, include_erts)
+        working-directory: fluxer_gateway
+        run: |
+          # Patch rebar.config to include erts in prod release
+          (Get-Content rebar.config) -replace '{include_erts, false}', '{include_erts, true}' | Set-Content rebar.config
+          .\scriptsebar3_wrapper.sh as prod release
+        shell: pwsh
+
+      - name: Upload gateway artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluxer-gateway-windows-x64
+          path: fluxer_gateway/_build/prod/rel/fluxer_gateway/**
+          retention-days: 7
+
+  download-bins-windows:
+    name: Download Windows Binaries
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'alpha-0.4' }}
+
+      - name: Download binaries
+        shell: pwsh
+        run: |
+          $BinDir = "windows\bin"
+          New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+          New-Item -ItemType Directory -Force -Path "$BinDir\node" | Out-Null
+
+          # Caddy
+          Write-Host "Downloading Caddy..."
+          Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/latest/download/caddy_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\caddy.zip" -DestinationPath $BinDir -Force
+
+          # NATS
+          Write-Host "Downloading NATS..."
+          $natsRel = (Invoke-RestMethod "https://api.github.com/repos/nats-io/nats-server/releases/latest").tag_name
+          Invoke-WebRequest -Uri "https://github.com/nats-io/nats-server/releases/download/$natsRel/nats-server-$natsRel-windows-amd64.zip" -OutFile "$env:TEMP\nats.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\nats.zip" -DestinationPath "$env:TEMP\nats" -Force
+          Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\nats-server.exe"
+
+          # Meilisearch
+          Write-Host "Downloading Meilisearch..."
+          $meiliRel = (Invoke-RestMethod "https://api.github.com/repos/meilisearch/meilisearch/releases/latest").tag_name
+          Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile "$BinDir\meilisearch.exe" -UseBasicParsing
+
+          # LiveKit
+          Write-Host "Downloading LiveKit..."
+          $livekitRel = (Invoke-RestMethod "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
+          Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
+          Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\livekit-server.exe"
+
+          # Valkey
+          Write-Host "Downloading Valkey..."
+          $valkeyRel = (Invoke-RestMethod "https://api.github.com/repos/valkey-io/valkey/releases/latest").tag_name
+          Invoke-WebRequest -Uri "https://github.com/valkey-io/valkey/releases/download/$valkeyRel/valkey-$($valkeyRel.TrimStart('v'))-windows-x86_64.zip" -OutFile "$env:TEMP\valkey.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\valkey.zip" -DestinationPath "$env:TEMP\valkey" -Force
+          Copy-Item (Get-ChildItem "$env:TEMP\valkey" -Filter "valkey-server.exe" -Recurse | Select-Object -First 1).FullName "$BinDir\valkey-server.exe"
+
+          # Node.js portable
+          Write-Host "Downloading Node.js..."
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" -OutFile "$env:TEMP\node.zip" -UseBasicParsing
+          Expand-Archive "$env:TEMP\node.zip" -DestinationPath "$env:TEMP\nodeextract" -Force
+          Copy-Item -Recurse -Force (Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1).FullName "$BinDir\node"
+
+          # Install pnpm
+          & "$BinDir\node\npm.cmd" install -g pnpm
+
+          Write-Host "All binaries downloaded."
+
+      - name: Upload binaries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluxoid-windows-bins
+          path: windows/bin/**
+          retention-days: 7
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'alpha-0.4' }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps and build
+        run: |
+          cd fluxer_app
+          pnpm install
+          pnpm build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluxoid-frontend-dist
+          path: fluxer_app/dist/**
+          retention-days: 7
+
+  package-windows:
+    name: Package Windows Installer
+    needs: [build-gateway-windows, download-bins-windows, build-frontend]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'alpha-0.4' }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download gateway artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fluxer-gateway-windows-x64
+          path: windows/bin/fluxer_gateway
+
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fluxoid-windows-bins
+          path: windows/bin
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fluxoid-frontend-dist
+          path: fluxer_app/dist
+
+      - name: Copy meilisearch master key
+        run: Copy-Item dev\meilisearch_master_key windows\meilisearch_master_key
+        shell: pwsh
+
+      - name: Install desktop deps
+        working-directory: fluxer_desktop
+        run: pnpm install
+
+      - name: Build Electron main process
+        working-directory: fluxer_desktop
+        run: pnpm build
+        env:
+          NODE_ENV: production
+
+      - name: Package Windows installer
+        working-directory: fluxer_desktop
+        run: npx electron-builder --win --x64
+        env:
+          BUILD_CHANNEL: stable
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluxoid-windows-installer
+          path: fluxer_desktop/dist-electron/*.exe
+          retention-days: 30

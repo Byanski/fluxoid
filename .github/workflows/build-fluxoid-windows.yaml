@@ -31,16 +31,13 @@ jobs:
       - name: Install rebar3
         shell: pwsh
         run: |
-          # Download rebar3 Windows binary directly from hex.pm
-          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3.ps1" -OutFile "$env:TEMP\rebar3_install.ps1" -UseBasicParsing -ErrorAction SilentlyContinue
-          # Fallback: use mix escript or just download the escript and wrap it
+          $rebar3Rel = (Invoke-RestMethod "https://api.github.com/repos/erlang/rebar3/releases/latest").tag_name
           $rebar3Dir = "C:\rebar3"
           New-Item -ItemType Directory -Force -Path $rebar3Dir | Out-Null
-          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/latest/download/rebar3" -OutFile "$rebar3Dir\rebar3" -UseBasicParsing
-          # Create a cmd wrapper
+          Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/download/$rebar3Rel/rebar3" -OutFile "$rebar3Dir\rebar3" -UseBasicParsing
           Set-Content -Path "$rebar3Dir\rebar3.cmd" -Value "@escript %~dp0rebar3 %*"
           Add-Content -Path $env:GITHUB_PATH -Value $rebar3Dir
-          Write-Host "rebar3 installed to $rebar3Dir"
+          Write-Host "rebar3 $rebar3Rel installed to $rebar3Dir"
 
       - name: Build gateway release
         working-directory: fluxer_gateway
@@ -109,13 +106,8 @@ jobs:
           $nodeDir = Get-ChildItem "$env:TEMP\nodeextract" -Directory | Select-Object -First 1
           $nodeBinDir = Join-Path $BinDir "node"
           Copy-Item -Recurse -Force $nodeDir.FullName $nodeBinDir
-          Write-Host "Node dir contents:"
-          Get-ChildItem $nodeBinDir | Select-Object Name
-
-          Write-Host "Installing pnpm via npm..."
           $npmExe = Get-ChildItem $nodeBinDir -Filter "npm.cmd" -Recurse | Select-Object -First 1
-          if (-not $npmExe) { $npmExe = Get-ChildItem $nodeBinDir -Filter "npm" -Recurse | Select-Object -First 1 }
-          Write-Host "npm found at: $($npmExe.FullName)"
+          Write-Host "npm at: $($npmExe.FullName)"
           & $npmExe.FullName install -g pnpm
 
           Write-Host "All binaries downloaded."
@@ -147,8 +139,8 @@ jobs:
 
       - name: Install deps and build
         run: |
-          # Override semver to avoid trust downgrade error
-          pnpm config set overrides.semver 7.6.3 --location global
+          # Pin semver to avoid trust downgrade error from pnpm
+          npm install -g semver@7.6.3 --force
           cd fluxer_app
           pnpm install --no-frozen-lockfile
           pnpm build

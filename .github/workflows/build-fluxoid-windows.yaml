@@ -262,6 +262,14 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Verify build inputs
+        shell: pwsh
+        run: |
+          Write-Host "Checking fluxer_desktop/dist..."
+          Get-ChildItem fluxer_desktop/dist -Recurse | Select-Object FullName
+          Write-Host "Checking windows/bin..."
+          Get-ChildItem windows/bin | Select-Object Name
+
       - name: Package Windows installer
         working-directory: fluxer_desktop
         run: npx electron-builder --win --x64

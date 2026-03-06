@@ -45,10 +45,10 @@ jobs:
         working-directory: fluxer_gateway
         shell: pwsh
         run: |
-          # Use pre-prepared Windows rebar config (no ezstd NIF, include_erts=true)
+          # Use pre-prepared Windows rebar config and Windows-specific compress module
           Copy-Item rebar.windows.config rebar.config -Force
+          Copy-Item src/gateway/gateway_compress.windows.erl src/gateway/gateway_compress.erl -Force
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          # Remove lock file and cache so ezstd is not pulled in
           if (Test-Path rebar.lock) { Remove-Item -Force rebar.lock }
           if (Test-Path _build) { Remove-Item -Recurse -Force _build }
           rebar3 as prod release

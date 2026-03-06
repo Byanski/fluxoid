@@ -51,30 +51,8 @@ jobs:
           Copy-Item fluxer_gateway.app.src.windows src/fluxer_gateway.app.src -Force
           # Generate sys.config (gitignored)
           New-Item -ItemType Directory -Force -Path config | Out-Null
-          Set-Content -Path config/sys.config -Value @'
-[
-    {kernel, [
-        {logger_level, debug},
-        {logger, [
-            {handler, default, logger_std_h, #{
-                level => debug,
-                config => #{
-                    type => standard_io
-                }
-            }}
-        ]},
-        {inet_dist_use_interface, {0,0,0,0}},
-        {inet_backend, socket},
-        {inet_dist_listen_options, [{reuseaddr, true}]}
-    ]},
-    {sasl, [
-        {errlog_type, error}
-    ]},
-    {inet, [
-        {lookup, [native, file, dns]}
-    ]}
-].
-'@
+          $sysconfig = "[`n    {kernel, [`n        {logger_level, debug}`n    ]},`n    {sasl, [{errlog_type, error}]}`n].`n"
+          Set-Content -Path config/sys.config -Value $sysconfig
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
           if (Test-Path rebar.lock) { Remove-Item -Force rebar.lock }
           if (Test-Path _build) { Remove-Item -Recurse -Force _build }

@@ -46,6 +46,9 @@ jobs:
           # Use pre-prepared Windows rebar config (no ezstd NIF, include_erts=true)
           Copy-Item rebar.windows.config rebar.config -Force
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
+          # Clean any cached artifacts that may reference ezstd
+          if (Test-Path _build) { Remove-Item -Recurse -Force _build }
+          if (Test-Path _checkouts) { Remove-Item -Recurse -Force _checkouts }
           rebar3 as prod release
 
       - name: Upload gateway artifact
@@ -142,6 +145,7 @@ jobs:
         run: |
           cd fluxer_app
           pnpm install --no-frozen-lockfile
+          pnpm lingui:compile
           pnpm build
 
       - name: Upload frontend artifact

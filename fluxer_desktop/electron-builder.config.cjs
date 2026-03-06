@@ -49,11 +49,11 @@ module.exports = {
 			to: 'badges',
 			filter: ['**/*'],
 		},
-		{
+		...(process.platform === 'win32' || process.env.BUILD_WINDOWS ? [{
 			from: '../windows',
 			to: 'fluxoid-windows',
 			filter: ['**/*'],
-		},
+		}] : []),
 	],
 
 	asar: true,

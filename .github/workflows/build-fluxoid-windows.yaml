@@ -46,9 +46,9 @@ jobs:
           # Use pre-prepared Windows rebar config (no ezstd NIF, include_erts=true)
           Copy-Item rebar.windows.config rebar.config -Force
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
-          # Clean any cached artifacts that may reference ezstd
+          # Remove lock file and cache so ezstd is not pulled in
+          if (Test-Path rebar.lock) { Remove-Item -Force rebar.lock }
           if (Test-Path _build) { Remove-Item -Recurse -Force _build }
-          if (Test-Path _checkouts) { Remove-Item -Recurse -Force _checkouts }
           rebar3 as prod release
 
       - name: Upload gateway artifact
@@ -142,6 +142,8 @@ jobs:
           node-version: 24
 
       - name: Install deps and build
+        env:
+          FLUXER_CONFIG: ${{ github.workspace }}/config/config.json
         run: |
           cd fluxer_app
           pnpm install --no-frozen-lockfile

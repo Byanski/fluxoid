@@ -30,6 +30,8 @@ jobs:
 
       - name: Install rebar3
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $rebar3Rel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/erlang/rebar3/releases/latest").tag_name
           $rebar3Dir = "C:\rebar3"

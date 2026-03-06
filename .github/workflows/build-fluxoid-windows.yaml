@@ -47,7 +47,7 @@ jobs:
         run: |
           # Use pre-prepared Windows rebar config and Windows-specific compress module
           Copy-Item rebar.windows.config rebar.config -Force
-          Copy-Item src/gateway/gateway_compress.windows.erl src/gateway/gateway_compress.erl -Force
+          Copy-Item gateway_compress.windows.erl src/gateway/gateway_compress.erl -Force
           $env:REBAR_SKIP_PROJECT_PLUGINS = '1'
           if (Test-Path rebar.lock) { Remove-Item -Force rebar.lock }
           if (Test-Path _build) { Remove-Item -Recurse -Force _build }

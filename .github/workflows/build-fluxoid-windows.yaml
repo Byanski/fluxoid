@@ -235,9 +235,13 @@ jobs:
           name: fluxoid-frontend-dist
           path: fluxer_app/dist
 
-      - name: Copy meilisearch master key
+      - name: Generate meilisearch master key
         shell: pwsh
-        run: Copy-Item dev\meilisearch_master_key windows\meilisearch_master_key
+        run: |
+          New-Item -ItemType Directory -Force -Path dev | Out-Null
+          $key = -join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
+          Set-Content -Path dev\meilisearch_master_key -Value $key -NoNewline
+          Copy-Item dev\meilisearch_master_key windows\meilisearch_master_key
 
       - name: Install desktop deps
         working-directory: fluxer_desktop

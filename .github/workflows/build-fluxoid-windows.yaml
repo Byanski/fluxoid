@@ -271,14 +271,12 @@ jobs:
           Get-ChildItem windows/bin | Select-Object Name
 
       - name: Package Windows installer
+        working-directory: fluxer_desktop
         shell: pwsh
-        run: |
-          cd fluxer_desktop
-          # Install electron-builder deps fresh to avoid workspace confusion
-          npm install --ignore-scripts
-          npx electron-builder --win --x64 --config electron-builder.config.cjs
+        run: pnpm exec electron-builder --win --x64
         env:
           BUILD_CHANNEL: stable
+          BUILD_WINDOWS: "true"
           npm_config_ignore_workspace: "true"
 
       - name: Upload installer

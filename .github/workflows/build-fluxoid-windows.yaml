@@ -141,6 +141,38 @@ jobs:
         with:
           node-version: 24
 
+      - name: Create CI config
+        run: |
+          mkdir -p config
+          cat > config/config.json << 'EOF'
+          {
+            "env": "development",
+            "domain": {
+              "base_domain": "localhost",
+              "public_port": 48763,
+              "public_scheme": "http",
+              "gateway_endpoint": "wss://gateway.fluxer.app"
+            },
+            "app_public": {
+              "client_id": "https://localhost",
+              "redirect_uris": ["http://127.0.0.1:48763/callback"],
+              "bootstrap_api_endpoint": "http://localhost:48763/api"
+            },
+            "database": {"backend": "sqlite", "sqlite_path": "./data/dev.db"},
+            "internal": {"kv": "redis://127.0.0.1:6379/0", "kv_mode": "standalone"},
+            "s3": {"access_key_id": "ci", "secret_access_key": "ci", "endpoint": "http://127.0.0.1:49319/s3"},
+            "services": {
+              "server": {"port": 49319, "host": "0.0.0.0"},
+              "media_proxy": {"secret_key": "ci"},
+              "admin": {"secret_key_base": "ci", "oauth_client_secret": "ci"},
+              "marketing": {"enabled": false, "port": 49531, "host": "0.0.0.0", "secret_key_base": "ci"},
+              "gateway": {"port": 49107, "admin_reload_secret": "ci", "media_proxy_endpoint": "http://127.0.0.1:49319/media", "logger_level": "debug"},
+              "nats": {"core_url": "nats://127.0.0.1:4222", "jetstream_url": "nats://127.0.0.1:4223"}
+            },
+            "auth": {"sudo_mode_secret": "ci"}
+          }
+          EOF
+
       - name: Install deps and build
         env:
           FLUXER_CONFIG: ${{ github.workspace }}/config/config.json

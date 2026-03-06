@@ -31,7 +31,7 @@ jobs:
       - name: Install rebar3
         shell: pwsh
         run: |
-          $rebar3Rel = (Invoke-RestMethod "https://api.github.com/repos/erlang/rebar3/releases/latest").tag_name
+          $rebar3Rel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/erlang/rebar3/releases/latest").tag_name
           $rebar3Dir = "C:\rebar3"
           New-Item -ItemType Directory -Force -Path $rebar3Dir | Out-Null
           Invoke-WebRequest -Uri "https://github.com/erlang/rebar3/releases/download/$rebar3Rel/rebar3" -OutFile "$rebar3Dir\rebar3" -UseBasicParsing
@@ -70,35 +70,37 @@ jobs:
 
       - name: Download binaries
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $BinDir = Join-Path (Get-Location) "windows\bin"
           New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
           Write-Host "Downloading Caddy..."
-          $caddyRel = (Invoke-RestMethod "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
+          $caddyRel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/caddyserver/caddy/releases/latest").tag_name
           $caddyVer = $caddyRel.TrimStart('v')
           Invoke-WebRequest -Uri "https://github.com/caddyserver/caddy/releases/download/$caddyRel/caddy_${caddyVer}_windows_amd64.zip" -OutFile "$env:TEMP\caddy.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\caddy.zip" -DestinationPath $BinDir -Force
 
           Write-Host "Downloading NATS..."
-          $natsRel = (Invoke-RestMethod "https://api.github.com/repos/nats-io/nats-server/releases/latest").tag_name
+          $natsRel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/nats-io/nats-server/releases/latest").tag_name
           Invoke-WebRequest -Uri "https://github.com/nats-io/nats-server/releases/download/$natsRel/nats-server-$natsRel-windows-amd64.zip" -OutFile "$env:TEMP\nats.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\nats.zip" -DestinationPath "$env:TEMP\nats" -Force
           Copy-Item (Get-ChildItem "$env:TEMP\nats" -Filter "nats-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "nats-server.exe")
 
           Write-Host "Downloading Meilisearch..."
-          $meiliRel = (Invoke-RestMethod "https://api.github.com/repos/meilisearch/meilisearch/releases/latest").tag_name
+          $meiliRel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/meilisearch/meilisearch/releases/latest").tag_name
           Invoke-WebRequest -Uri "https://github.com/meilisearch/meilisearch/releases/download/$meiliRel/meilisearch-windows-amd64.exe" -OutFile (Join-Path $BinDir "meilisearch.exe") -UseBasicParsing
 
           Write-Host "Downloading LiveKit..."
-          $livekitRel = (Invoke-RestMethod "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
+          $livekitRel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/livekit/livekit/releases/latest").tag_name
           $livekitVer = $livekitRel.TrimStart('v')
           Invoke-WebRequest -Uri "https://github.com/livekit/livekit/releases/download/$livekitRel/livekit_${livekitVer}_windows_amd64.zip" -OutFile "$env:TEMP\livekit.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\livekit.zip" -DestinationPath "$env:TEMP\livekit" -Force
           Copy-Item (Get-ChildItem "$env:TEMP\livekit" -Filter "livekit-server.exe" -Recurse | Select-Object -First 1).FullName (Join-Path $BinDir "livekit-server.exe")
 
           Write-Host "Downloading Redis for Windows..."
-          $redisRel = (Invoke-RestMethod "https://api.github.com/repos/tporadowski/redis/releases/latest").tag_name
+          $redisRel = (Invoke-RestMethod -Headers @{Authorization="Bearer $env:GH_TOKEN"} "https://api.github.com/repos/tporadowski/redis/releases/latest").tag_name
           $redisVer = $redisRel.TrimStart('v')
           Invoke-WebRequest -Uri "https://github.com/tporadowski/redis/releases/download/$redisRel/Redis-x64-${redisVer}.zip" -OutFile "$env:TEMP\redis.zip" -UseBasicParsing
           Expand-Archive "$env:TEMP\redis.zip" -DestinationPath "$env:TEMP\redis" -Force

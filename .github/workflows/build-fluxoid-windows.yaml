@@ -251,14 +251,14 @@ jobs:
         working-directory: fluxer_desktop
         shell: pwsh
         run: |
-          pnpm build
-          # Verify output exists
+          node scripts/build.mjs
+          Write-Host "Build complete. Checking output..."
           if (-not (Test-Path "dist\main\index.js")) {
-            Write-Error "dist\main\index.js not found after build!"
-            Get-ChildItem dist -Recurse | Select-Object FullName
+            Write-Error "dist\main\index.js not found!"
+            if (Test-Path "dist") { Get-ChildItem dist -Recurse | Select-Object FullName }
             exit 1
           }
-          Write-Host "Build output verified."
+          Write-Host "dist\main\index.js found OK"
         env:
           NODE_ENV: production
 

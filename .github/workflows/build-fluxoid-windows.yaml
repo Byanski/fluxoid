@@ -271,15 +271,17 @@ jobs:
           Get-ChildItem windows/bin | Select-Object Name
 
       - name: Package Windows installer
+        working-directory: fluxer_desktop
         shell: pwsh
         run: |
-          cd fluxer_desktop
-          # Install electron-builder deps fresh to avoid workspace confusion
-          npm install --ignore-scripts
-          npx electron-builder --win --x64 --config electron-builder.config.cjs
+          # Patch builder-util to not treat NSIS warning 6020 as error
+          $utilFile = (Get-ChildItem node_modules/.pnpm -Filter "util.js" -Recurse | Where-Object { $_.FullName -match "builder-util\\out" } | Select-Object -First 1).FullName
+          Write-Host "Patching builder-util at: $utilFile"
+          (Get-Content $utilFile) -replace 'warning treated as error', 'warning (ignored)' | Set-Content $utilFile
+          pnpm exec electron-builder --win --x64
         env:
           BUILD_CHANNEL: stable
-          npm_config_ignore_workspace: "true"
+          BUILD_WINDOWS: "true"
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

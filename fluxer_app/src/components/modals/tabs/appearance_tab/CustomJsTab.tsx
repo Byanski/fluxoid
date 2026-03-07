@@ -362,18 +362,22 @@ export const CustomJsTabContent: React.FC = observer(() => {
 				ToastActionCreators.error(t`Script blocked: ${scan.blockReason}`);
 				return;
 			}
-			if (scan.warnings.length > 0) {
+			const permLines = scan.permissions.map(p => `${p.type === 'safe' ? '✓' : '⚠'} ${p.label}`);
+			const warnLines = scan.warnings.map(w => `⚠ ${w}`);
+			const allLines = [...permLines, ...warnLines];
+			if (allLines.length > 0) {
 				const proceed = window.confirm(
-					`This script has security warnings:
+					`This script requests the following permissions:
 
-• ${scan.warnings.join('
-• ')}
+${allLines.join('
+')}
 
 Import anyway?`
 				);
 				if (!proceed) return;
 			}
 			AccessibilityActionCreators.update({customJs: decoded});
+			setScanResult(scan);
 			setImportCode('');
 			ToastActionCreators.success(t`Script imported successfully.`);
 		} catch {

@@ -282,10 +282,13 @@ jobs:
           }
           Write-Host "dist contents before packaging:"
           Get-ChildItem dist | Select-Object Name
-          # Patch builder-util to not treat NSIS warning 6020 as error
-          $utilFile = (Get-ChildItem node_modules/.pnpm -Filter "util.js" -Recurse | Where-Object { $_.FullName -match "builder-util\\out" } | Select-Object -First 1).FullName
-          Write-Host "Patching builder-util at: $utilFile"
-          (Get-Content $utilFile) -replace 'warning treated as error', 'warning (ignored)' | Set-Content $utilFile
+          # Patch electron-builder NSIS template to fix warning 6020 (uninstaller code without WriteUninstaller)
+          $nsisTemplate = (Get-ChildItem node_modules/.pnpm -Filter "installSection.nsh" -Recurse | Select-Object -First 1).FullName
+          Write-Host "Found NSIS template: $nsisTemplate"
+          # Patch NsisTarget to pass /WX- (ignore warnings as errors) to makensis
+          $nsisTarget = (Get-ChildItem node_modules/.pnpm -Filter "NsisTarget.js" -Recurse | Where-Object { $_.FullName -match "app-builder-lib" } | Select-Object -First 1).FullName
+          Write-Host "Patching NsisTarget at: $nsisTarget"
+          (Get-Content $nsisTarget) -replace '"-WX"', '"-WX-"' | Set-Content $nsisTarget
           pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs
         env:
           BUILD_CHANNEL: stable

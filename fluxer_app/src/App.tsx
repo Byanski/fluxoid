@@ -47,6 +47,7 @@ import {startReadStateCleanup} from '@app/lib/ReadStateCleanup';
 import {Outlet, RouterProvider} from '@app/lib/router/React';
 import {router} from '@app/Router';
 import AccessibilityStore, {HdrDisplayMode} from '@app/stores/AccessibilityStore';
+import {buildSafeWrapper, MUTATION_OBSERVER_GUARD} from '@app/lib/CustomJsSecurity';
 import ModalStore from '@app/stores/ModalStore';
 import PopoutStore from '@app/stores/PopoutStore';
 import ReadStateStore from '@app/stores/ReadStateStore';

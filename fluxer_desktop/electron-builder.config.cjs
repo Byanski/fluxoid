@@ -36,7 +36,7 @@ module.exports = {
 		output: 'dist-electron',
 	},
 
-	files: ['dist/**/*', 'package.json'],
+	files: [{ from: 'dist', to: '.', filter: ['**/*', '!win-unpacked/**', '!win-arm64-unpacked/**'] }, 'package.json'],
 
 	extraMetadata: {
 		main: 'dist/main/index.js',

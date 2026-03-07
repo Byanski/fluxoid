@@ -367,14 +367,12 @@ export const CustomJsTabContent: React.FC = observer(() => {
 			const warnLines = scan.warnings.map(w => `⚠ ${w}`);
 			const allLines = [...permLines, ...warnLines];
 			if (allLines.length > 0) {
-				const proceed = window.confirm(
-					`This script requests the following permissions:
+				const proceed = window.confirm(`This script requests the following permissions:
 
 ${allLines.join('
 ')}
 
-Import anyway?`
-				);
+Import anyway?`);
 				if (!proceed) return;
 			}
 			AccessibilityActionCreators.update({customJs: decoded});

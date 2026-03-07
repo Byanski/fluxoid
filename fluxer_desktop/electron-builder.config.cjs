@@ -39,7 +39,7 @@ module.exports = {
 	files: [{ from: 'dist', to: '.', filter: ['**/*', '!win-unpacked/**', '!win-arm64-unpacked/**'] }, 'package.json'],
 
 	extraMetadata: {
-		main: 'dist/main/index.js',
+		main: 'main/index.js',
 		name: packageName,
 	},
 

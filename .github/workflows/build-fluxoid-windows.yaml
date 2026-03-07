@@ -273,7 +273,7 @@ jobs:
       - name: Package Windows installer
         working-directory: fluxer_desktop
         shell: pwsh
-        run: pnpm exec electron-builder --win --x64
+        run: pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs --project .
         env:
           BUILD_CHANNEL: stable
           BUILD_WINDOWS: "true"

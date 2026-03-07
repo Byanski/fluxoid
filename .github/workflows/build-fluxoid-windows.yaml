@@ -274,11 +274,19 @@ jobs:
         working-directory: fluxer_desktop
         shell: pwsh
         run: |
+          # Move built electron source to electron-src to avoid collision with electron-builder output
+          if (Test-Path "dist") {
+            Copy-Item -Recurse -Force dist electron-src
+            Remove-Item -Recurse -Force dist
+            Rename-Item electron-src dist
+          }
+          Write-Host "dist contents before packaging:"
+          Get-ChildItem dist | Select-Object Name
           # Patch builder-util to not treat NSIS warning 6020 as error
           $utilFile = (Get-ChildItem node_modules/.pnpm -Filter "util.js" -Recurse | Where-Object { $_.FullName -match "builder-util\\out" } | Select-Object -First 1).FullName
           Write-Host "Patching builder-util at: $utilFile"
           (Get-Content $utilFile) -replace 'warning treated as error', 'warning (ignored)' | Set-Content $utilFile
-          pnpm exec electron-builder --win --x64
+          pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs
         env:
           BUILD_CHANNEL: stable
           BUILD_WINDOWS: "true"

@@ -288,7 +288,7 @@ jobs:
           # Patch NsisTarget to pass /WX- (ignore warnings as errors) to makensis
           $nsisTarget = (Get-ChildItem node_modules/.pnpm -Filter "NsisTarget.js" -Recurse | Where-Object { $_.FullName -match "app-builder-lib" } | Select-Object -First 1).FullName
           Write-Host "Patching NsisTarget at: $nsisTarget"
-          (Get-Content $nsisTarget) -replace '"-WX"', '"-WX-"' | Set-Content $nsisTarget
+          Select-String -Path $nsisTarget -Pattern 'WX' | Select-Object -First 5 | ForEach-Object { Write-Host $_.Line }
           pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs
         env:
           BUILD_CHANNEL: stable

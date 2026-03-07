@@ -273,11 +273,32 @@ jobs:
       - name: Package Windows installer
         working-directory: fluxer_desktop
         shell: pwsh
+<<<<<<< HEAD
         run: pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs --project .
         env:
           BUILD_CHANNEL: stable
           BUILD_WINDOWS: "true"
           npm_config_ignore_workspace: "true"
+=======
+        run: |
+          # Move built electron source to electron-src to avoid collision with electron-builder output
+          if (Test-Path "dist") {
+            Copy-Item -Recurse -Force dist electron-src
+            Remove-Item -Recurse -Force dist
+            Rename-Item electron-src dist
+          }
+          Write-Host "dist contents before packaging:"
+          Get-ChildItem dist | Select-Object Name
+          # Patch NsisTarget to remove /WX (warnings as errors) from makensis args
+          $nsisTarget = (Get-ChildItem node_modules/.pnpm -Filter "NsisTarget.js" -Recurse | Where-Object { $_.FullName -match "app-builder-lib" } | Select-Object -First 1).FullName
+          Write-Host "Patching NsisTarget at: $nsisTarget"
+          (Get-Content $nsisTarget) -replace '"-WX",\s*', '' | Set-Content $nsisTarget
+          (Get-Content $nsisTarget) -replace ',\s*"-WX"', '' | Set-Content $nsisTarget
+          pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs
+        env:
+          BUILD_CHANNEL: stable
+          BUILD_WINDOWS: "true"
+>>>>>>> refactor
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

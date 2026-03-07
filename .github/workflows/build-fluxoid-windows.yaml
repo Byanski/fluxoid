@@ -292,8 +292,14 @@ jobs:
           # Patch NsisTarget to remove /WX (warnings as errors) from makensis args
           $nsisTarget = (Get-ChildItem node_modules/.pnpm -Filter "NsisTarget.js" -Recurse | Where-Object { $_.FullName -match "app-builder-lib" } | Select-Object -First 1).FullName
           Write-Host "Patching NsisTarget at: $nsisTarget"
+<<<<<<< HEAD
           (Get-Content $nsisTarget) -replace '"-WX",\s*', '' | Set-Content $nsisTarget
           (Get-Content $nsisTarget) -replace ',\s*"-WX"', '' | Set-Content $nsisTarget
+=======
+          (Get-Content $nsisTarget) -replace 'this\.options\.warningsAsErrors === false \? \[\] : \["-WX"\]', '[]' | Set-Content $nsisTarget
+          Write-Host "Patch applied, verifying:"
+          Select-String -Path $nsisTarget -Pattern "WX" | ForEach-Object { Write-Host $_.Line }
+>>>>>>> refactor
           pnpm exec electron-builder --win --x64 --config electron-builder.config.cjs
         env:
           BUILD_CHANNEL: stable

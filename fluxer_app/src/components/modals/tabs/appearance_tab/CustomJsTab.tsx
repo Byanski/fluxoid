@@ -9,6 +9,7 @@ import AccessibilityStore from '@app/stores/AccessibilityStore';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {ShareNetworkIcon, CaretDownIcon, CaretRightIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
+import {scanCustomJs, type Permission} from '@app/lib/CustomJsSecurity';
 import type React from 'react';
 import {useCallback, useState} from 'react';
 
@@ -47,6 +48,28 @@ const ShareJsModal = observer(function ShareJsModal({js}: {js: string}) {
 		</Modal.Root>
 	);
 });
+
+// ─── Permission Summary UI ───────────────────────────────────────────────────
+
+function PermissionSummary({permissions, warnings}: {permissions: Permission[]; warnings: string[]}) {
+	if (permissions.length === 0 && warnings.length === 0) return null;
+	return (
+		<div style={{background: 'var(--background-tertiary)', border: '1px solid var(--background-modifier-accent)', borderRadius: '6px', padding: '10px 12px', marginBottom: '8px', fontSize: '0.8rem'}}>
+			<div style={{fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)'}}>This script can:</div>
+			{permissions.map((p, i) => (
+				<div key={i} style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', color: p.type === 'safe' ? 'var(--green-360)' : p.type === 'warn' ? 'var(--yellow-360)' : 'var(--red-400)'}}>
+					<span>{p.type === 'safe' ? '✓' : '⚠'}</span>
+					<span>{p.label}</span>
+				</div>
+			))}
+			{warnings.map((w, i) => (
+				<div key={`w-${i}`} style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', color: 'var(--yellow-360)'}}>
+					<span>⚠</span><span>{w}</span>
+				</div>
+			))}
+		</div>
+	);
+}
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
 
@@ -297,9 +320,23 @@ export const CustomJsTabContent: React.FC = observer(() => {
 	const {t} = useLingui();
 	const customJs = AccessibilityStore.customJs ?? '';
 	const [importCode, setImportCode] = useState('');
+	const [scanResult, setScanResult] = useState<ReturnType<typeof scanCustomJs> | null>(() => {
+		const js = AccessibilityStore.customJs;
+		return js ? scanCustomJs(js) : null;
+	});
 
 	const handleChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		const value = event.target.value;
+		if (value.length > 0) {
+			const scan = scanCustomJs(value);
+			if (scan.blocked) {
+				ToastActionCreators.error(t`Script blocked: ${scan.blockReason}`);
+				return;
+			}
+			setScanResult(scan);
+		} else {
+			setScanResult(null);
+		}
 		AccessibilityActionCreators.update({customJs: value.length > 0 ? value : null});
 	}, []);
 
@@ -320,6 +357,22 @@ export const CustomJsTabContent: React.FC = observer(() => {
 		if (!importCode.trim()) return;
 		try {
 			const decoded = decodeURIComponent(escape(atob(importCode.trim())));
+			const scan = scanCustomJs(decoded);
+			if (scan.blocked) {
+				ToastActionCreators.error(t`Script blocked: ${scan.blockReason}`);
+				return;
+			}
+			if (scan.warnings.length > 0) {
+				const proceed = window.confirm(
+					`This script has security warnings:
+
+• ${scan.warnings.join('
+• ')}
+
+Import anyway?`
+				);
+				if (!proceed) return;
+			}
 			AccessibilityActionCreators.update({customJs: decoded});
 			setImportCode('');
 			ToastActionCreators.success(t`Script imported successfully.`);
@@ -358,6 +411,9 @@ export const CustomJsTabContent: React.FC = observer(() => {
 			</div>
 			<PresetsSection onInsert={handleInsert} />
 			<SoundUploadSlots />
+			{scanResult && !scanResult.blocked && (
+				<PermissionSummary permissions={scanResult.permissions} warnings={scanResult.warnings} />
+			)}
 			<Textarea
 				label={t`Custom JavaScript`}
 				placeholder={t`// Add custom animations, sounds, or other client-side behaviour here.`}

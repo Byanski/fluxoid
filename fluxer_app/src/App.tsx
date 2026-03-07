@@ -405,7 +405,7 @@ export const AppWrapper = observer(({children}: AppWrapperProps) => {
 
 		const scriptElement = document.createElement('script');
 		scriptElement.id = scriptElementId;
-		scriptElement.textContent = js;
+		scriptElement.textContent = MUTATION_OBSERVER_GUARD + buildSafeWrapper(js);
 		document.head.appendChild(scriptElement);
 	}, [customJs]);
 

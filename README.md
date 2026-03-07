@@ -34,6 +34,35 @@ devenv shell -- bash -c "cd fluxer_app && pnpm build"
 
 ---
 
+## 🔐 Alpha 0.4.5 — Custom JS Security Update
+
+This update adds a comprehensive security layer to the Custom JS system, protecting users from malicious scripts shared by others.
+
+### Security features added
+
+- **Static code analysis** — scripts are scanned before execution for known malicious patterns
+- **Hard blocks** — the following are outright rejected with an error:
+  - `document.cookie` access (credential theft)
+  - `localStorage`/`sessionStorage` reads (credential theft)
+  - Node.js filesystem access via `require('fs')` (critical — prevents `rm -rf /` style attacks)
+  - `require('child_process')` / shell execution (prevents arbitrary command execution)
+  - `process.env` access (prevents environment variable theft)
+  - `WebAssembly` usage (prevents crypto miners)
+  - Background `Worker` creation (prevents crypto miners)
+  - `navigator.sendBeacon` (prevents data exfiltration)
+  - Infinite loops (`while(true)`, `for(;;)`) — CPU abuse prevention
+  - Heavily obfuscated code (hex/unicode encoding, eval of encoded strings)
+- **Dangerous globals shadowed** — `require`, `process`, `global`, `__dirname`, `Buffer`, `module` are all set to `undefined` before user code runs, preventing Node.js/Electron escape even if static analysis misses something
+- **Permission summary UI** — before importing a shared script, users see a summary of what the script can do (modify UI, play sounds, send network requests, etc.)
+- **DOM mutation rate limiting** — `MutationObserver` callbacks are automatically disconnected if they fire more than 500 mutations per second, preventing runaway DOM abuse
+- **50kb size limit** — prevents oversized script payloads
+- **Obfuscation detection** — scripts with suspiciously long single lines or high special-character density are blocked
+
+### Import flow
+When importing a shared script code, you will now see a permissions dialog listing what the script can do before it is applied. Blocked scripts will show an error toast and will not be imported.
+
+---
+
 ## 🎨 What is Fluxoid
 
 Fluxoid is the `refactor` branch with extra flavor. It extends the base Fluxer client with deeper customization support — most notably a **Custom JS** input field that works alongside the existing Custom CSS field, giving themers full control over the look, feel, and behavior of their client.

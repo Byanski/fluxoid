@@ -358,6 +358,7 @@ export const CustomJsTabContent: React.FC = observer(() => {
 		try {
 			const decoded = decodeURIComponent(escape(atob(importCode.trim())));
 			const scan = scanCustomJs(decoded);
+			console.log('[Security] scan result:', JSON.stringify(scan));
 			if (scan.blocked) {
 				ToastActionCreators.error(t`Script blocked: ${scan.blockReason}`);
 				return;

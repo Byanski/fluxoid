@@ -35,7 +35,7 @@ done
 sleep 3
 
 # Launch AppImage and wait for it to close
-"$SCRIPT_DIR/fluxer_desktop/dist-electron/fluxer_desktop-0.0.0.AppImage"
+"$SCRIPT_DIR/fluxer_desktop/dist-electron/Fluxer-0.0.0-linux-x86_64.AppImage"
 
 # When AppImage closes, kill devenv and all its children
 kill $DEVENV_PID

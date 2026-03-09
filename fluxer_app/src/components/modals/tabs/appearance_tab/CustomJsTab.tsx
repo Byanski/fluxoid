@@ -478,11 +478,8 @@ const VideoBgSection = observer(function VideoBgSection() {
 			ToastActionCreators.error(`Add a valid fluxerusercontent.com video URL first.`);
 			return;
 		}
-		const muteAttr = audio ? '' : 'muted ';
 		const snippet = `// [fluxoid-videobg] Video Background\n(function(){\n  const existing=document.getElementById('fluxoid-videobg');if(existing)existing.remove();\n  const v=document.createElement('video');\n  v.id='fluxoid-videobg';\n  v.src=${JSON.stringify(storedUrl)};\n  v.autoplay=true;v.loop=true;${audio ? '' : 'v.muted=true;'}\n  v.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-1;pointer-events:none;';\n  document.body.prepend(v);\n})();`;
-		const bgRegex = /\/\/ \[fluxoid-videobg\][^
-]*
-\(function\(\) \{[\s\S]*?\}\)\(\);/;
+		const bgRegex = /\/\/ \[fluxoid-videobg\][^\n]*\n\(function\(\) \{[\s\S]*?\}\)\(\);/;
 		let current = AccessibilityStore.customJs ?? '';
 		if (bgRegex.test(current)) {
 			current = current.replace(bgRegex, snippet.trim());

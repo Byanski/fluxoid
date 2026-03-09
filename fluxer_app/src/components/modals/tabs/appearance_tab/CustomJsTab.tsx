@@ -175,9 +175,13 @@ function isValidFluxerUrl(url: string): boolean {
 	}
 }
 
-function buildSoundSnippet(key: string, url: string): string {
+function buildSoundSnippet(key: string, url: string, volume = 1.0, masterVolume = 1.0): string {
 	const slot = SOUND_SLOTS.find(s => s.key === key);
 	if (!slot) return '';
+	const vol = Math.round(Math.min(1, volume * masterVolume) * 100) / 100;
+	const gain = `const g=ctx.createGain();g.gain.value=${vol};`;
+	const connect = `s.connect(g);g.connect(ctx.destination);`;
+	const play = `const s=ctx.createBufferSource();s.buffer=decoded;${gain}${connect}s.start();`;
 	const lines: string[] = [
 		`// [fluxoid-sound:${key}] ${slot.label}`,
 		'(function() {',
@@ -185,19 +189,19 @@ function buildSoundSnippet(key: string, url: string): string {
 		`  fetch(${JSON.stringify(url)}).then(r=>r.arrayBuffer()).then(buf=>ctx.decodeAudioData(buf)).then(decoded=>{`,
 	];
 	if (slot.event === 'mousedown') {
-		lines.push(`    document.addEventListener('mousedown',()=>{const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();});`);
+		lines.push(`    document.addEventListener('mousedown',()=>{${play}});`);
 	} else if (slot.event === 'keydown') {
-		lines.push(`    document.addEventListener('keydown',(e)=>{if(e.repeat)return;const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();});`);
+		lines.push(`    document.addEventListener('keydown',(e)=>{if(e.repeat)return;${play}});`);
 	} else if (slot.event === 'notification') {
-		lines.push(`    const oN=window.Notification;window.Notification=function(...a){if(!a[0]?.tag?.startsWith('dm-')){const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();}return new oN(...a);};Object.assign(window.Notification,oN);`);
+		lines.push(`    const oN=window.Notification;window.Notification=function(...a){if(!a[0]?.tag?.startsWith('dm-')){${play}}return new oN(...a);};Object.assign(window.Notification,oN);`);
 	} else if (slot.event === 'dm') {
-		lines.push(`    const oD=window.Notification;window.Notification=function(...a){if(a[0]?.tag?.startsWith('dm-')){const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();}return new oD(...a);};Object.assign(window.Notification,oD);`);
+		lines.push(`    const oD=window.Notification;window.Notification=function(...a){if(a[0]?.tag?.startsWith('dm-')){${play}}return new oD(...a);};Object.assign(window.Notification,oD);`);
 	} else if (slot.event === 'send') {
-		lines.push(`    new MutationObserver(()=>{const btn=document.querySelector('[data-slate-send-button]');if(btn&&!btn._snd_${key}){btn._snd_${key}=true;btn.addEventListener('click',()=>{const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();});}}).observe(document.body,{childList:true,subtree:true});`);
+		lines.push(`    new MutationObserver(()=>{const btn=document.querySelector('[data-slate-send-button]');if(btn&&!btn._snd_${key}){btn._snd_${key}=true;btn.addEventListener('click',()=>{${play}});}}).observe(document.body,{childList:true,subtree:true});`);
 	} else if (slot.event === 'boot') {
-		lines.push(`    const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();`);
+		lines.push(`    ${play}`);
 	} else if (slot.event === 'joincall') {
-		lines.push(`    new MutationObserver(()=>{const el=document.querySelector('[data-voice-call-root="true"]');if(el&&!el._snd_joincall){el._snd_joincall=true;const s=ctx.createBufferSource();s.buffer=decoded;s.connect(ctx.destination);s.start();}}).observe(document.body,{childList:true,subtree:true});`);
+		lines.push(`    new MutationObserver(()=>{const el=document.querySelector('[data-voice-call-root="true"]');if(el&&!el._snd_joincall){el._snd_joincall=true;${play}}}).observe(document.body,{childList:true,subtree:true});`);
 	}
 	lines.push('  });', '})();');
 	return lines.join('\n');
@@ -217,7 +221,19 @@ const SoundUploadSlots = observer(function SoundUploadSlots() {
 	const {t} = useLingui();
 	const [sounds, setSounds] = useState<Record<string, string>>({});
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	const [volumes, setVolumes] = useState<Record<string, number>>(() => AccessibilityStore.soundVolumes ?? {});
+	const [masterVolume, setMasterVolume] = useState(() => AccessibilityStore.masterVolume ?? 1.0);
 	const [open, setOpen] = useState(false);
+
+	const handleVolumeChange = useCallback((key: string, val: number) => {
+		setVolumes(prev => ({...prev, [key]: val}));
+		AccessibilityActionCreators.update({soundVolumes: {...AccessibilityStore.soundVolumes, [key]: val}});
+	}, []);
+
+	const handleMasterVolumeChange = useCallback((val: number) => {
+		setMasterVolume(val);
+		AccessibilityActionCreators.update({masterVolume: val});
+	}, []);
 
 	const handleUrlChange = useCallback((key: string, url: string) => {
 		if (!url) {
@@ -240,8 +256,10 @@ const SoundUploadSlots = observer(function SoundUploadSlots() {
 			return;
 		}
 		let current = AccessibilityStore.customJs ?? '';
+		const masterVol = AccessibilityStore.masterVolume;
+		const slotVols = AccessibilityStore.soundVolumes;
 		for (const [key, url] of Object.entries(sounds)) {
-			current = replaceOrAppend(current, key, buildSoundSnippet(key, url));
+			current = replaceOrAppend(current, key, buildSoundSnippet(key, url, slotVols[key] ?? 1.0, masterVol));
 		}
 		AccessibilityActionCreators.update({customJs: current});
 		ToastActionCreators.success(t`Sound script inserted.`);
@@ -259,6 +277,18 @@ const SoundUploadSlots = observer(function SoundUploadSlots() {
 						Paste a <strong>fluxerusercontent.com</strong> link for each sound.
 						To get a link: upload your MP3 to Personal Notes, right-click the file, and copy the link.
 					</p>
+					<div className={styles.soundSlot} style={{marginBottom: '10px'}}>
+						<div className={styles.soundSlotInfo}>
+							<span className={styles.soundSlotLabel}>Master Volume</span>
+							<span className={styles.soundSlotDesc}>Controls overall volume for all sound slots</span>
+						</div>
+						<div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
+							<input type="range" min={0} max={1} step={0.01} value={masterVolume}
+								onChange={e => handleMasterVolumeChange(parseFloat(e.target.value))}
+								style={{flex: 1}} />
+							<span style={{minWidth: '36px', fontSize: '0.8rem', color: 'var(--text-muted)'}}>{Math.round(masterVolume * 100)}%</span>
+						</div>
+					</div>
 					{SOUND_SLOTS.map(slot => (
 						<div key={slot.key} className={styles.soundSlot}>
 							<div className={styles.soundSlotInfo}>
@@ -275,10 +305,223 @@ const SoundUploadSlots = observer(function SoundUploadSlots() {
 								{errors[slot.key] && <span className={styles.soundError}>{errors[slot.key]}</span>}
 								{sounds[slot.key] && <span className={styles.soundLoaded}>✓</span>}
 							</div>
+							<div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
+								<span style={{fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '50px'}}>Volume</span>
+								<input type="range" min={0} max={1} step={0.01}
+									value={volumes[slot.key] ?? 1.0}
+									onChange={e => handleVolumeChange(slot.key, parseFloat(e.target.value))}
+									style={{flex: 1}} />
+								<span style={{minWidth: '36px', fontSize: '0.8rem', color: 'var(--text-muted)'}}>{Math.round((volumes[slot.key] ?? 1.0) * 100)}%</span>
+							</div>
 						</div>
 					))}
 					{Object.keys(sounds).length > 0 && (
 						<Button variant="primary" fitContent onClick={handleInsertAll} style={{marginTop: '0.5rem'}}>
+							Insert into JS
+						</Button>
+					)}
+				</div>
+			)}
+		</div>
+	);
+});
+
+
+// ─── Animation Presets Section ───────────────────────────────────────────────
+
+const ANIMATION_PRESETS = [
+	{key: 'slide-left',    label: 'Slide Left',    defaultDistance: 100, defaultDuration: 300},
+	{key: 'slide-right',   label: 'Slide Right',   defaultDistance: 100, defaultDuration: 300},
+	{key: 'slide-up',      label: 'Slide Up',      defaultDistance: 60,  defaultDuration: 300},
+	{key: 'slide-down',    label: 'Slide Down',    defaultDistance: 60,  defaultDuration: 300},
+	{key: 'checkerboard',  label: 'Checkerboard',  defaultDistance: 0,   defaultDuration: 600},
+	{key: 'fade',          label: 'Fade',          defaultDistance: 0,   defaultDuration: 400},
+	{key: 'zoom-in',       label: 'Zoom In',       defaultDistance: 0,   defaultDuration: 350},
+	{key: 'glitch',        label: 'Glitch',        defaultDistance: 10,  defaultDuration: 400},
+];
+
+function buildAnimationSnippet(key: string, distance: number, duration: number): string {
+	const ms = duration;
+	const px = distance;
+	switch (key) {
+		case 'slide-left':
+			return `// [fluxoid-anim:${key}] Slide Left transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-slide-left{from{transform:translateX(${px}px);opacity:0}to{transform:translateX(0);opacity:1}}[data-fluxoid-anim]{animation:fluxoid-slide-left ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'slide-right':
+			return `// [fluxoid-anim:${key}] Slide Right transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-slide-right{from{transform:translateX(-${px}px);opacity:0}to{transform:translateX(0);opacity:1}}[data-fluxoid-anim]{animation:fluxoid-slide-right ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'slide-up':
+			return `// [fluxoid-anim:${key}] Slide Up transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-slide-up{from{transform:translateY(${px}px);opacity:0}to{transform:translateY(0);opacity:1}}[data-fluxoid-anim]{animation:fluxoid-slide-up ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'slide-down':
+			return `// [fluxoid-anim:${key}] Slide Down transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-slide-down{from{transform:translateY(-${px}px);opacity:0}to{transform:translateY(0);opacity:1}}[data-fluxoid-anim]{animation:fluxoid-slide-down ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'checkerboard':
+			return `// [fluxoid-anim:${key}] Checkerboard transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-checker{0%{clip-path:inset(0 100% 0 0)}100%{clip-path:inset(0 0% 0 0)}}[data-fluxoid-anim]{animation:fluxoid-checker ${ms}ms steps(8) forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'fade':
+			return `// [fluxoid-anim:${key}] Fade transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-fade{from{opacity:0}to{opacity:1}}[data-fluxoid-anim]{animation:fluxoid-fade ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'zoom-in':
+			return `// [fluxoid-anim:${key}] Zoom In transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-zoom{from{transform:scale(0.95);opacity:0}to{transform:scale(1);opacity:1}}[data-fluxoid-anim]{animation:fluxoid-zoom ${ms}ms ease forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		case 'glitch':
+			return `// [fluxoid-anim:${key}] Glitch transition\n(function(){\n  const style=document.createElement('style');\n  style.textContent='@keyframes fluxoid-glitch{0%{transform:translate(0);filter:none}20%{transform:translate(-${px}px,${px}px);filter:hue-rotate(90deg)}40%{transform:translate(${px}px,-${px}px);filter:hue-rotate(180deg)}60%{transform:translate(-${px}px,0);filter:hue-rotate(270deg)}80%{transform:translate(0,${px}px);filter:none}100%{transform:translate(0);filter:none}}[data-fluxoid-anim]{animation:fluxoid-glitch ${ms}ms steps(4) forwards}';\n  document.head.appendChild(style);\n  const obs=new MutationObserver(()=>{const el=document.querySelector('[class*=chat]');if(el&&!el._anim_set){el._anim_set=true;obs.observe(el,{childList:true});el.addEventListener('click',()=>{el.setAttribute('data-fluxoid-anim','1');setTimeout(()=>el.removeAttribute('data-fluxoid-anim'),${ms});})}});\n  obs.observe(document.body,{childList:true,subtree:true});\n})();`;
+		default:
+			return '';
+	}
+}
+
+const AnimationPresetsSection = observer(function AnimationPresetsSection() {
+	const [open, setOpen] = useState(false);
+	const [selected, setSelected] = useState<string | null>(null);
+	const [distance, setDistance] = useState(100);
+	const [duration, setDuration] = useState(300);
+
+	const handleSelect = useCallback((key: string) => {
+		const preset = ANIMATION_PRESETS.find(p => p.key === key);
+		if (!preset) return;
+		setSelected(key);
+		setDistance(preset.defaultDistance);
+		setDuration(preset.defaultDuration);
+	}, []);
+
+	const handleInsert = useCallback(() => {
+		if (!selected) return;
+		const snippet = buildAnimationSnippet(selected, distance, duration);
+		if (!snippet) return;
+		const animRegex = new RegExp(`\/\/ \[fluxoid-anim:${selected}\][^\n]*\n\(function\(\) \{[\s\S]*?\}\)\(\);`);
+		let current = AccessibilityStore.customJs ?? '';
+		if (animRegex.test(current)) {
+			current = current.replace(animRegex, snippet.trim());
+		} else {
+			current = current ? `${current}\n\n${snippet}` : snippet;
+		}
+		AccessibilityActionCreators.update({customJs: current});
+		ToastActionCreators.success(`Animation preset inserted.`);
+	}, [selected, distance, duration]);
+
+	const selectedPreset = ANIMATION_PRESETS.find(p => p.key === selected);
+
+	return (
+		<div className={styles.section}>
+			<button type="button" className={styles.sectionToggle} onClick={() => setOpen(o => !o)}>
+				{open ? <CaretDownIcon size={14} /> : <CaretRightIcon size={14} />}
+				<span>Channel Transition Animations</span>
+			</button>
+			{open && (
+				<div className={styles.sectionContent}>
+					<p className={styles.sectionDesc}>Choose an animation that plays when switching channels.</p>
+					<div className={styles.presetGrid}>
+						{ANIMATION_PRESETS.map(p => (
+							<button key={p.key} type="button"
+								className={styles.presetBtn}
+								style={selected === p.key ? {border: '1px solid var(--brand-500)'} : {}}
+								onClick={() => handleSelect(p.key)}>
+								{p.label}
+							</button>
+						))}
+					</div>
+					{selectedPreset && (
+						<div style={{marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+							{selectedPreset.defaultDistance > 0 && (
+								<div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+									<span style={{fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '110px'}}>Distance (px)</span>
+									<input type="range" min={10} max={300} step={5} value={distance}
+										onChange={e => setDistance(parseInt(e.target.value))}
+										style={{flex: 1}} />
+									<span style={{minWidth: '36px', fontSize: '0.8rem', color: 'var(--text-muted)'}}>{distance}px</span>
+								</div>
+							)}
+							<div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+								<span style={{fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '110px'}}>Duration (ms)</span>
+								<input type="range" min={100} max={1500} step={50} value={duration}
+									onChange={e => setDuration(parseInt(e.target.value))}
+									style={{flex: 1}} />
+								<span style={{minWidth: '36px', fontSize: '0.8rem', color: 'var(--text-muted)'}}>{duration}ms</span>
+							</div>
+							<Button variant="primary" fitContent onClick={handleInsert} style={{marginTop: '4px'}}>
+								Insert into JS
+							</Button>
+						</div>
+					)}
+				</div>
+			)}
+		</div>
+	);
+});
+
+// ─── Video Background Section ─────────────────────────────────────────────────
+
+const VideoBgSection = observer(function VideoBgSection() {
+	const [open, setOpen] = useState(false);
+	const [url, setUrl] = useState(AccessibilityStore.videoBgUrl ?? '');
+	const [audio, setAudio] = useState(AccessibilityStore.videoBgAudio ?? false);
+	const [error, setError] = useState('');
+
+	const handleUrlChange = useCallback((val: string) => {
+		setUrl(val);
+		if (!val) {
+			setError('');
+			AccessibilityActionCreators.update({videoBgUrl: null});
+			return;
+		}
+		if (!isValidFluxerUrl(val)) {
+			setError('Only fluxerusercontent.com links are supported.');
+			return;
+		}
+		setError('');
+		AccessibilityActionCreators.update({videoBgUrl: val});
+	}, []);
+
+	const handleAudioToggle = useCallback((val: boolean) => {
+		setAudio(val);
+		AccessibilityActionCreators.update({videoBgAudio: val});
+	}, []);
+
+	const handleInsert = useCallback(() => {
+		const storedUrl = AccessibilityStore.videoBgUrl;
+		if (!storedUrl) {
+			ToastActionCreators.error(`Add a valid fluxerusercontent.com video URL first.`);
+			return;
+		}
+		const muteAttr = audio ? '' : 'muted ';
+		const snippet = `// [fluxoid-videobg] Video Background\n(function(){\n  const existing=document.getElementById('fluxoid-videobg');if(existing)existing.remove();\n  const v=document.createElement('video');\n  v.id='fluxoid-videobg';\n  v.src=${JSON.stringify(storedUrl)};\n  v.autoplay=true;v.loop=true;${audio ? '' : 'v.muted=true;'}\n  v.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-1;pointer-events:none;';\n  document.body.prepend(v);\n})();`;
+		const bgRegex = /\/\/ \[fluxoid-videobg\][^
+]*
+\(function\(\) \{[\s\S]*?\}\)\(\);/;
+		let current = AccessibilityStore.customJs ?? '';
+		if (bgRegex.test(current)) {
+			current = current.replace(bgRegex, snippet.trim());
+		} else {
+			current = current ? `${current}\n\n${snippet}` : snippet;
+		}
+		AccessibilityActionCreators.update({customJs: current});
+		ToastActionCreators.success(`Video background inserted.`);
+	}, [audio]);
+
+	return (
+		<div className={styles.section}>
+			<button type="button" className={styles.sectionToggle} onClick={() => setOpen(o => !o)}>
+				{open ? <CaretDownIcon size={14} /> : <CaretRightIcon size={14} />}
+				<span>Video Background</span>
+			</button>
+			{open && (
+				<div className={styles.sectionContent}>
+					<p className={styles.sectionDesc}>
+						Paste a <strong>fluxerusercontent.com</strong> link to an MP4, WebM, or MOV file to use as an animated background.
+						This will override any CSS background.
+					</p>
+					<input
+						type="url"
+						className={styles.soundUrlInput}
+						placeholder="https://fluxerusercontent.com/..."
+						value={url}
+						onChange={e => handleUrlChange(e.target.value.trim())}
+						style={{width: '100%', marginBottom: '6px'}}
+					/>
+					{error && <span className={styles.soundError}>{error}</span>}
+					<div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px'}}>
+						<input type="checkbox" id="videobg-audio" checked={audio} onChange={e => handleAudioToggle(e.target.checked)} />
+						<label htmlFor="videobg-audio" style={{fontSize: '0.85rem', color: 'var(--text-normal)', cursor: 'pointer'}}>
+							Enable video audio
+						</label>
+					</div>
+					{url && !error && (
+						<Button variant="primary" fitContent onClick={handleInsert} style={{marginTop: '8px'}}>
 							Insert into JS
 						</Button>
 					)}
@@ -409,6 +652,8 @@ export const CustomJsTabContent: React.FC = observer(() => {
 			</div>
 			<PresetsSection onInsert={handleInsert} />
 			<SoundUploadSlots />
+			<AnimationPresetsSection />
+			<VideoBgSection />
 			{scanResult && !scanResult.blocked && (
 				<PermissionSummary permissions={scanResult.permissions} warnings={scanResult.warnings} />
 			)}

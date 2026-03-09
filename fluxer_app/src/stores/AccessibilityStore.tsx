@@ -97,6 +97,10 @@ export interface AccessibilitySettings {
 	voiceChannelJoinRequiresDoubleClick: boolean;
 	customThemeCss: string | null;
 	customJs: string | null;
+	soundVolumes: Record<string, number>;
+	masterVolume: number;
+	videoBgUrl: string | null;
+	videoBgAudio: boolean;
 	showFavorites: boolean;
 	zoomLevel: number;
 	dmMessagePreviewMode: DMMessagePreviewMode;
@@ -158,6 +162,10 @@ class AccessibilityStore {
 	systemReducedMotion = false;
 	customThemeCss: string | null = null;
 	customJs: string | null = null;
+	soundVolumes: Record<string, number> = {};
+	masterVolume = 1.0;
+	videoBgUrl: string | null = null;
+	videoBgAudio = false;
 	showFavorites = true;
 	zoomLevel = 1.0;
 	dmMessagePreviewMode: DMMessagePreviewMode = getDefaultDmMessagePreviewMode();
@@ -227,6 +235,10 @@ class AccessibilityStore {
 			'voiceChannelJoinRequiresDoubleClick',
 			'customThemeCss',
 			'customJs',
+			'soundVolumes',
+			'masterVolume',
+			'videoBgUrl',
+			'videoBgAudio',
 			'showFavorites',
 			'zoomLevel',
 			'dmMessagePreviewMode',
@@ -351,6 +363,10 @@ class AccessibilityStore {
 			this.voiceChannelJoinRequiresDoubleClick = validated.voiceChannelJoinRequiresDoubleClick;
 		if (validated.customThemeCss !== undefined) this.customThemeCss = validated.customThemeCss;
 		if (validated.customJs !== undefined) this.customJs = validated.customJs;
+		if (validated.soundVolumes !== undefined) this.soundVolumes = validated.soundVolumes;
+		if (validated.masterVolume !== undefined) this.masterVolume = validated.masterVolume;
+		if (validated.videoBgUrl !== undefined) this.videoBgUrl = validated.videoBgUrl;
+		if (validated.videoBgAudio !== undefined) this.videoBgAudio = validated.videoBgAudio;
 		if (validated.showFavorites !== undefined) this.showFavorites = validated.showFavorites;
 		if (validated.zoomLevel !== undefined) {
 			this.zoomLevel = validated.zoomLevel;
@@ -425,6 +441,10 @@ class AccessibilityStore {
 				data.voiceChannelJoinRequiresDoubleClick ?? this.voiceChannelJoinRequiresDoubleClick,
 			customThemeCss: data.customThemeCss !== undefined ? data.customThemeCss : this.customThemeCss,
 			customJs: data.customJs !== undefined ? data.customJs : this.customJs,
+			soundVolumes: data.soundVolumes !== undefined ? data.soundVolumes : this.soundVolumes,
+			masterVolume: Math.max(0, Math.min(1.0, data.masterVolume ?? this.masterVolume)),
+			videoBgUrl: data.videoBgUrl !== undefined ? data.videoBgUrl : this.videoBgUrl,
+			videoBgAudio: data.videoBgAudio ?? this.videoBgAudio,
 			showFavorites: data.showFavorites ?? this.showFavorites,
 			zoomLevel: Math.max(0.5, Math.min(2.0, data.zoomLevel ?? this.zoomLevel)),
 			dmMessagePreviewMode: data.dmMessagePreviewMode ?? this.dmMessagePreviewMode,
